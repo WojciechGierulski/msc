@@ -1,0 +1,6 @@
+VidTR https://arxiv.org/pdf/2104.11746v2
+Multiview https://arxiv.org/pdf/2201.04288
+MVIT V2
+MVIT https://arxiv.org/pdf/2104.11227
+TIMESFORMER https://arxiv.org/pdf/2102.05095
+ViVIT https://arxiv.org/pdf/2103.15691
