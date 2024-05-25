@@ -24,3 +24,12 @@ class ResizeVideo(object):
     def __call__(self, sample):
         result = self.transform(sample)
         return result
+
+
+class Div255(object):
+    def __init__(self):
+        pass
+
+    def __call__(self, sample):
+        return sample/255
+    

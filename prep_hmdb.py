@@ -3,6 +3,7 @@ import patoolib
 import shutil
 import glob
 
+# os.mkdir("datasets")
 # os.system("curl -0 -o datasets/data.rar https://serre-lab.clps.brown.edu/wp-content/uploads/2013/10/hmdb51_org.rar")
 # os.system("curl -0 -o datasets/labels.rar https://serre-lab.clps.brown.edu/wp-content/uploads/2013/10/test_train_splits.rar")
 # os.mkdir("datasets/hmdb")
@@ -13,9 +14,12 @@ import glob
 # os.remove("datasets/data.rar")
 
 for files in os.listdir('datasets/hmdb/data'):
-    foldername = files.split('.')[0]
-    os.mkdir(f"datasets/hmdb/data/{foldername}")
-    patoolib.extract_archive(f"datasets/hmdb/data/{files}", outdir=f"datasets/hmdb/data")
+    try:
+        foldername = files.split('.')[0]
+        os.mkdir(f"datasets/hmdb/data/{foldername}")
+        patoolib.extract_archive(f"datasets/hmdb/data/{files}", outdir=f"datasets/hmdb/data")
+    except FileExistsError:
+        print(f"skipping {foldername}")
 
 for f in glob.glob("datasets/hmdb/data/*.rar"):
     os.remove(f)
