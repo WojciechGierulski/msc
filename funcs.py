@@ -46,31 +46,47 @@ def train_epoch(model, device, training_loader, epoch, optimizer, loss, label_sm
 
 
 def val_epoch(model, validation_loader, device, loss, wandb):
-      model.eval()
-      total_loss = 0
-      total_batches = 0
-      total_correct = 0
-      total_samples = 0
-      with torch.no_grad():
-            for i, data in enumerate(tqdm.tqdm(validation_loader)):
-                  images, _, labels = data
-                  images = images.to(device)
-                  labels = labels.to(device)
+    model.eval()
+    total_loss = 0
+    total_batches = 0
+    total_correct = 0
+    total_samples = 0
+    with torch.no_grad():
+        for i, data in enumerate(tqdm.tqdm(validation_loader)):
+            images, _, labels = data
+            images = images.to(device)
+            labels = labels.to(device)
 
-                  outputs = model(images).logits
+            outputs = model(images).logits
 
-                  loss_valid = loss(outputs, labels)
+            loss_valid = loss(outputs, labels)
 
-                  # logging
-                  _, predicted = torch.max(outputs, dim=1)
-                  correct = (predicted == labels).sum().item()
-                  total_batches += 1
-                  total_loss += loss_valid.item()
-                  total_correct += correct
-                  total_samples += len(images)
+            # logging
+            _, predicted = torch.max(outputs, dim=1)
+            correct = (predicted == labels).sum().item()
+            total_batches += 1
+            total_loss += loss_valid.item()
+            total_correct += correct
+            total_samples += len(images)
 
-      wandb.log({"valid_accuracy_epoch": total_correct / total_samples, "valid_loss_epoch": total_loss / total_batches})
+    wandb.log({"valid_accuracy_epoch": total_correct / total_samples, "valid_loss_epoch": total_loss / total_batches})
 
 
-def val_epoch_full():
-      pass
+def test_epoch(model, test_loader, device, wandb):
+    model.eval()
+    total_correct = 0
+    total_samples = 0
+    with torch.no_grad():
+        for i, data in enumerate(tqdm.tqdm(test_loader)):
+            images = data["video"].to(device)
+            label = data["label"].to(device)
+
+            outputs = model(images).logits
+            outputs = torch.sum(outputs, 0)
+
+            _, predicted = torch.max(outputs, dim=1)
+            correct = 1 if predicted == label else 0
+            total_correct += correct
+            total_samples += 1
+
+    wandb.log({"test_accuracy": total_correct / total_samples})

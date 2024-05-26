@@ -4,8 +4,8 @@ import torch
 import tqdm
 import torch
 from utils import save_run, load_run
-from funcs import train_epoch, val_epoch
-from transforms import Div255
+from funcs import train_epoch, val_epoch, test_epoch
+from transforms import Div255, SplitEqually
 from torchvision.transforms.v2 import (
     ScaleJitter,
     RandAugment,
@@ -17,10 +17,16 @@ from torchvision.transforms.v2 import (
     RandomApply,
     UniformTemporalSubsample,
     CenterCrop,
+    Lambda,
 )
 from weight_inits import init_timesformer
 from torch.utils.data import DataLoader
 from models.vivit_custom.utils.scheduler import WarmupCosineSchedule
+from pytorchvideo.transforms import ApplyTransformToKey
+from pytorchvideo.data.hmdb51 import Hmdb51
+from pytorchvideo.data.clip_sampling import UniformClipSampler
+from pytorchvideo.transforms import UniformTemporalSubsample, ApplyTransformToKey
+from constants import HMDB_CLASSES
 from transformers import TimesformerConfig, TimesformerForVideoClassification
 from transformers import ViTForImageClassification
 
@@ -97,6 +103,35 @@ dataset_test = HMDB51(
     output_format="TCHW",
 )
 
+test_transform = Compose(
+    [
+        ApplyTransformToKey(
+            key="video",
+            transform=Compose(
+                [
+                    Lambda(lambda x: x.type(torch.uint8)),
+                    Lambda(lambda x: x.permute(1, 0, 2, 3)),
+                    SplitEqually(num_frames=64),
+                    UniformTemporalSubsample(num_samples=8, temporal_dim=-4),
+                    CenterCrop(size=(224, 224)),
+                    Div255(),
+                    Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                ]
+            ),
+        ),
+        ApplyTransformToKey(key="label", transform=Compose([lambda x: HMDB_CLASSES.index(x)])),
+    ]
+)
+
+dataset_test = Hmdb51(
+    data_path=r"datasets\hmdb\test_train_splits\testTrainMulti_7030_splits",
+    clip_sampler=UniformClipSampler(1000),  # sample whole clips
+    decode_audio=False,
+    video_path_prefix="datasets/hmdb/data",
+    split_type="test",
+    transform=test_transform,
+)
+
 
 vit = ViTForImageClassification.from_pretrained("WinKawaks/vit-small-patch16-224")
 
@@ -137,3 +172,6 @@ for epoch in range(1 + prev_epoch, 1 + prev_epoch + epochs):
 
     if epoch % config["val_epochs"] == 0:
         val_epoch(timesformer, validation_loader, device, loss, wandb)
+
+
+test_epoch(timesformer, test_loader, device, wandb)
