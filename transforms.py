@@ -1,6 +1,5 @@
 from typing import Any
 from torchvision.transforms.v2 import Resize
-from torchvision.tv_tensors import Video
 
 class ToVideo(object):
     """Convert ndarrays in sample to Tensors."""
@@ -32,4 +31,3 @@ class Div255(object):
 
     def __call__(self, sample):
         return sample/255
-    
