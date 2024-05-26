@@ -1,0 +1,139 @@
+import wandb
+from torchvision.datasets import HMDB51
+import torch
+import tqdm
+import torch
+from utils import save_run, load_run
+from funcs import train_epoch, val_epoch
+from transforms import Div255
+from torchvision.transforms.v2 import (
+    ScaleJitter,
+    RandAugment,
+    RandomCrop,
+    Compose,
+    ColorJitter,
+    RandomHorizontalFlip,
+    Normalize,
+    RandomApply,
+    UniformTemporalSubsample,
+    CenterCrop,
+)
+from weight_inits import init_timesformer
+from torch.utils.data import DataLoader
+from models.vivit_custom.utils.scheduler import WarmupCosineSchedule
+from transformers import TimesformerConfig, TimesformerForVideoClassification
+from transformers import ViTForImageClassification
+
+# from torchvision.transforms.v2 import MixUp
+
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+wandb.login(key="25a61b596081a070a75d3cfc16bfad96632650fc")
+
+config = {
+    "base_learning_rate": 0.0001,
+    "label_smoothing": 0.1,
+    "epochs": 10,
+    "layers": 12,
+    "frames": 8,
+    "val_epochs": 1,
+    "batch_size": 16,
+    "load_run": False,
+}
+
+wandb.init(project="msc", config=config)
+
+wandb.define_metric("epoch_nr")
+wandb.define_metric("train_accuracy_step")
+wandb.define_metric("train_accuracy_epoch", step_metric="epoch_nr")
+wandb.define_metric("valid_accuracy_epoch", step_metric="epoch_nr")
+wandb.define_metric("valid_loss_epoch", step_metric="epoch_nr")
+wandb.define_metric("train_loss_step")
+wandb.define_metric("train_loss_epoch", step_metric="epoch_nr")
+
+
+ds_transform_train = Compose(
+    transforms=[
+        UniformTemporalSubsample(num_samples=config["frames"]),
+        # RandomHorizontalFlip(p=0.5),
+        # ScaleJitter(target_size=(240, 320), scale_range=(0.9, 1.33)),
+        RandomCrop(size=(224, 224), pad_if_needed=True, fill=128),
+        # RandomApply(p=0.8, transforms=[ColorJitter(brightness=0.2, contrast=0.1, saturation=0.1, hue=0.1)]),
+        # RandAugment(num_ops=2, magnitude=10, fill=128),
+        Div255(),
+        Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ]
+)
+
+ds_transform_valid = Compose(
+    transforms=[
+        UniformTemporalSubsample(num_samples=config["frames"]),
+        CenterCrop((224, 224)),
+        Div255(),
+        Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ]
+)
+
+dataset_train = HMDB51(
+    root="datasets/hmdb/data",
+    annotation_path="datasets/hmdb/test_train_splits/testTrainMulti_7030_splits",
+    frames_per_clip=64,
+    step_between_clips=30,
+    num_workers=4,
+    transform=ds_transform_train,
+    train=True,
+    output_format="TCHW",
+)
+
+
+dataset_test = HMDB51(
+    root="datasets/hmdb/data",
+    annotation_path="datasets/hmdb/test_train_splits/testTrainMulti_7030_splits",
+    frames_per_clip=64,
+    step_between_clips=30,
+    num_workers=4,
+    transform=ds_transform_valid,
+    train=False,
+    output_format="TCHW",
+)
+
+
+vit = ViTForImageClassification.from_pretrained("WinKawaks/vit-small-patch16-224")
+
+timesformer_config = TimesformerConfig(
+    num_frames=config["frames"],
+    hidden_size=384,
+    num_attention_heads=6,
+    intermediate_size=384 * 4,
+    num_labels=51,
+    num_hidden_layers=config["layers"],
+)
+timesformer = TimesformerForVideoClassification(timesformer_config)
+timesformer.to(device)
+
+timesformer = init_timesformer(timesformer, vit)
+
+training_loader = DataLoader(dataset=dataset_train, batch_size=config["batch_size"], shuffle=True)
+validation_loader = DataLoader(dataset=dataset_test, batch_size=config["batch_size"], shuffle=False)
+
+
+epochs = config["epochs"]
+label_smoothing = config["label_smoothing"]
+
+optimizer = torch.optim.SGD(timesformer.parameters(), lr=config["base_learning_rate"], momentum=0.9, weight_decay=1e-5)
+# scheduler = WarmupCosineSchedule(optimizer, warmup_steps=int(0.06 * len(training_loader)), t_total=len(training_loader) * epochs)
+loss = torch.nn.functional.cross_entropy
+
+# mixup = MixUp(alpha=0.1, num_classes=51).to(device)
+
+if config["load_run"]:
+    timesformer, optimizer, prev_epoch = load_run(timesformer, optimizer, config["load_run"])
+else:
+    prev_epoch = 0
+
+
+for epoch in range(1 + prev_epoch, 1 + prev_epoch + epochs):
+    train_epoch(timesformer, device, training_loader, epoch, optimizer, loss, label_smoothing, wandb)
+
+    if epoch % config["val_epochs"] == 0:
+        val_epoch(timesformer, validation_loader, device, loss, wandb)
