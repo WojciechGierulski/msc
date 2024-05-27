@@ -1,12 +1,12 @@
 import torch
 
 
-def init_timesformer(timesformer, vit):
+def init_timesformer(timesformer, vit, n_layers):
       with torch.no_grad():
             timesformer.timesformer.embeddings.patch_embeddings.projection.load_state_dict(vit.vit.embeddings.patch_embeddings.projection.state_dict())
             timesformer.timesformer.embeddings.position_embeddings.copy_(vit.vit.embeddings.position_embeddings)
             #timesformer.timesformer.embeddings.time_embeddings
-            for i in range(config["layers"]):
+            for i in range(n_layers):
                   vit_qkv_weight = torch.cat([vit.vit.encoder.layer[i].attention.attention.query.weight, vit.vit.encoder.layer[i].attention.attention.key.weight, vit.vit.encoder.layer[i].attention.attention.value.weight])
                   vit_qkv_bias = torch.cat([vit.vit.encoder.layer[i].attention.attention.query.bias, vit.vit.encoder.layer[i].attention.attention.key.bias, vit.vit.encoder.layer[i].attention.attention.value.bias])
 
