@@ -5,7 +5,7 @@ from metrics import accuracy
 import matplotlib.pyplot as plt
 
 
-def train_epoch(model, device, training_loader, epoch, optimizer, loss, label_smoothing, mixup, wandb):
+def train_epoch(model, device, training_loader, epoch, optimizer, loss, label_smoothing, mixup, scheduler, config, wandb):
       model.train()
       print(f"Current epoch: {epoch}")
       curr_epoch_losses_train = []
@@ -16,14 +16,17 @@ def train_epoch(model, device, training_loader, epoch, optimizer, loss, label_sm
             images, _, labels = data
             images = images.to(device)
             labels = labels.to(device)
-
-            images, labels_mixed_up = mixup(images, labels)
-
+            
             optimizer.zero_grad()
-
-            outputs = model(images).logits
-
-            loss_train = loss(outputs, labels_mixed_up, label_smoothing=label_smoothing)
+            
+            if config["mixup"]:
+                images, labels_mixed_up = mixup(images, labels)
+                outputs = model(images).logits
+                loss_train = loss(outputs, labels_mixed_up, label_smoothing=label_smoothing)
+            else:
+                outputs = model(images).logits
+                loss_train = loss(outputs, labels, label_smoothing=label_smoothing)
+                
             loss_train.backward()
 
             # logging
@@ -36,7 +39,9 @@ def train_epoch(model, device, training_loader, epoch, optimizer, loss, label_sm
                        "train_accuracy_step_top5": corrects[1] / len(images),
                        "train_loss_step": loss_train.item()})
 
-            # scheduler.step()
+            if config["cosine_schedule"]:
+                scheduler.step()
+                wandb.log({"lr": float(scheduler.get_last_lr()[-1])})
             optimizer.step()
 
       wandb.log(
@@ -101,6 +106,6 @@ def test_epoch(model, test_loader, device, wandb):
             total_samples += 1
 
     wandb.log({
-         "test_accuracy_top1": total_correct / total_samples,
-         "test_accuracy_top5": total_correct_top5 / total_samples
+         "test_accuracy_epoch_top1": total_correct / total_samples,
+         "test_accuracy_epoch_top5": total_correct_top5 / total_samples
                })
