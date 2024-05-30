@@ -4,3 +4,9 @@ MVIT V2
 MVIT https://arxiv.org/pdf/2104.11227
 TIMESFORMER https://arxiv.org/pdf/2102.05095
 ViVIT https://arxiv.org/pdf/2103.15691
+
+
+cd /usr/local/cuda-12.1/lib64
+sudo rm -f libcudnn*
+cd /usr/local/cuda-12.1/include
+sudo rm -f cudnn*

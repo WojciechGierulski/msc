@@ -35,17 +35,18 @@ from pytorchvideo.transforms import MixUp
 if __name__ == "__main__":
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Device: {device}")
     wandb.login(key="25a61b596081a070a75d3cfc16bfad96632650fc")
 
     config = {
         "base_learning_rate": 0.01,
         "label_smoothing": 0.0,
-        "epochs": 10,
+        "epochs": 5,
         "layers": 12,
         "frames": 8,
         "val_epochs": 1,
         "batch_size": 20,
-        "load_run": False,
+        "load_run": "restful-hill-52",
         "init_vit": True,
         "cosine_schedule": False,
         "augmentations": True,
@@ -112,16 +113,16 @@ if __name__ == "__main__":
     )
 
 
-    dataset_valid = HMDB51(
-        root="datasets/hmdb/data",
-        annotation_path="datasets/hmdb/test_train_splits/testTrainMulti_7030_splits",
-        frames_per_clip=64,
-        step_between_clips=30,
-        num_workers=4,
-        transform=ds_transform_valid,
-        train=False,
-        output_format="TCHW",
-    )
+    # dataset_valid = HMDB51(
+    #     root="datasets/hmdb/data",
+    #     annotation_path="datasets/hmdb/test_train_splits/testTrainMulti_7030_splits",
+    #     frames_per_clip=64,
+    #     step_between_clips=30,
+    #     num_workers=4,
+    #     transform=ds_transform_valid,
+    #     train=False,
+    #     output_format="TCHW",
+    # )
 
     test_transform = Compose(
         [
@@ -170,8 +171,8 @@ if __name__ == "__main__":
     if config["init_vit"]:
         timesformer = init_timesformer(timesformer, vit, config["layers"])
 
-    training_loader = DataLoader(dataset=dataset_train, batch_size=config["batch_size"], shuffle=True)
-    validation_loader = DataLoader(dataset=dataset_valid, batch_size=config["batch_size"], shuffle=False)
+    training_loader = DataLoader(dataset=dataset_train, batch_size=config["batch_size"], shuffle=True, num_workers=4)
+    #validation_loader = DataLoader(dataset=dataset_valid, batch_size=config["batch_size"], shuffle=False)
     test_loader = DataLoader(dataset=dataset_test, batch_size=1)
 
 
