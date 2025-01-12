@@ -1,6 +1,19 @@
-from typing import Any
-from torchvision.transforms.v2 import Resize
 import torch
+from torchvision.transforms.v2 import (
+    ScaleJitter,
+    RandAugment,
+    RandomCrop,
+    Compose,
+    ColorJitter,
+    RandomHorizontalFlip,
+    Normalize,
+    RandomApply,
+    UniformTemporalSubsample,
+    CenterCrop,
+    Lambda,
+)
+from transforms import Div255, SplitEqually
+from pytorchvideo.transforms import UniformTemporalSubsample, ApplyTransformToKey
 
 
 class Div255(object):
@@ -23,3 +36,68 @@ class SplitEqually(object):
             seqs[-1] = sample[temp_steps - self.num_frames :]
 
         return torch.stack(seqs)
+
+
+def get_transforms(config, CLASSES_LIST):
+    if not config["augmentations"]:
+        ds_transform_train = Compose(
+            transforms=[
+                UniformTemporalSubsample(num_samples=config["frames"], temporal_dim=0),
+                RandomCrop(size=(224, 224), pad_if_needed=True, fill=128),
+                Div255(),
+                Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ]
+        )
+    if config["augmentations"] and not config["advanced_augmentations"]:
+        ds_transform_train = Compose(
+            transforms=[
+                UniformTemporalSubsample(num_samples=config["frames"], temporal_dim=0),
+                RandomHorizontalFlip(p=0.5),
+                RandomCrop(size=(224, 224), pad_if_needed=True, fill=128),
+                Div255(),
+                Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ]
+        )
+    if config["augmentations"] and config["advanced_augmentations"]:
+        ds_transform_train = Compose(
+            transforms=[
+                UniformTemporalSubsample(num_samples=config["frames"], temporal_dim=0),
+                RandomHorizontalFlip(p=0.5),
+                ScaleJitter(target_size=(240, 320), scale_range=(0.9, 1.33)),
+                RandomCrop(size=(224, 224), pad_if_needed=True, fill=128),
+                RandomApply(p=0.8, transforms=[ColorJitter(brightness=0.2, contrast=0.1, saturation=0.1, hue=0.1)]),
+                RandAugment(num_ops=2, magnitude=10, fill=128),
+                Div255(),
+                Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ]
+        )
+
+    ds_transform_valid = Compose(
+        transforms=[
+            UniformTemporalSubsample(num_samples=config["frames"], temporal_dim=0),
+            CenterCrop((224, 224)),
+            Div255(),
+            Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ]
+    )
+
+    test_transform = Compose(
+        [
+            ApplyTransformToKey(
+                key="video",
+                transform=Compose(
+                    [
+                        Lambda(lambda x: x.type(torch.uint8)),
+                        Lambda(lambda x: x.permute(1, 0, 2, 3)),
+                        SplitEqually(num_frames=64),
+                        UniformTemporalSubsample(num_samples=8, temporal_dim=-4),
+                        CenterCrop(size=(224, 224)),
+                        Div255(),
+                        Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                    ]
+                ),
+            ),
+            ApplyTransformToKey(key="label", transform=Compose([lambda x: CLASSES_LIST.index(x)])),
+        ]
+    )
+    return ds_transform_train, ds_transform_valid, test_transform

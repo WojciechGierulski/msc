@@ -3,11 +3,13 @@ import patoolib
 import shutil
 import glob
 
-os.mkdir("datasets")
+if not os.path.exists("datasets"):
+    os.mkdir("datasets")
 os.system("curl -0 -o datasets/data.rar https://serre-lab.clps.brown.edu/wp-content/uploads/2013/10/hmdb51_org.rar")
 os.system("curl -0 -o datasets/labels.rar https://serre-lab.clps.brown.edu/wp-content/uploads/2013/10/test_train_splits.rar")
-os.mkdir("datasets/hmdb")
-os.mkdir("datasets/hmdb/test_train_splits")
+if not os.path.exists("datasets/hmdb"):
+    os.mkdir("datasets/hmdb")
+    os.mkdir("datasets/hmdb/test_train_splits")
 patoolib.extract_archive("datasets/labels.rar", outdir="datasets/hmdb/test_train_splits")
 os.remove("datasets/labels.rar")
 patoolib.extract_archive("datasets/data.rar", outdir="datasets/hmdb/data")
