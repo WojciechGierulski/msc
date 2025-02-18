@@ -2,10 +2,13 @@ import tqdm
 import torch
 from utils import save_run
 from metrics import accuracy
-import matplotlib.pyplot as plt
+from utils import show_img_chw
+from torch.nn.functional import softmax
 
 
-def train_epoch(model, device, training_loader, epoch, optimizer, loss, label_smoothing, mixup, scheduler, wandb):
+def train_epoch(
+    model, device, training_loader, epoch, optimizer, loss, label_smoothing, mixup, scheduler, config, wandb
+):
     model.train()
     print(f"Current epoch: {epoch}")
     curr_epoch_losses_train = []
@@ -13,20 +16,21 @@ def train_epoch(model, device, training_loader, epoch, optimizer, loss, label_sm
     total_epoch_correct_train = 0
     total_epoch_correct_top5_train = 0
     for i, data in enumerate(tqdm.tqdm(training_loader)):
-        images, _, labels = data
+        images, labels = data
         images = images.to(device)
         labels = labels.to(device)
 
-        if mixup is not None:
-            images, labels_transformed = mixup(images, labels)
-        else:
-            labels_transformed = labels
-
         optimizer.zero_grad()
 
-        outputs = model(images).logits
+        if config["mixup"]:
+            images, labels_mixed_up = mixup(images.permute((0, 2, 1, 3, 4)), labels)
+            images = images.permute((0, 2, 1, 3, 4))
+            outputs = model(images).logits
+            loss_train = loss(outputs, labels_mixed_up)
+        else:
+            outputs = model(images).logits
+            loss_train = loss(outputs, labels, label_smoothing=label_smoothing)
 
-        loss_train = loss(outputs, labels_transformed, label_smoothing=label_smoothing)
         loss_train.backward()
 
         # logging
@@ -35,27 +39,29 @@ def train_epoch(model, device, training_loader, epoch, optimizer, loss, label_sm
         total_epoch_correct_train += corrects[0]
         total_epoch_correct_top5_train += corrects[1]
         curr_epoch_losses_train.append(loss_train.item())
-        wandb.log(
-            {
-                "train_accuracy_step_top1": corrects[0] / len(images),
-                "train_accuracy_step_top5": corrects[1] / len(images),
-                "train_loss_step": loss_train.item(),
-            }
-        )
+        # wandb.log(
+        #     {
+        #         "train_accuracy_step_top1": corrects[0] / len(images),
+        #         "train_accuracy_step_top5": corrects[1] / len(images),
+        #         "train_loss_step": loss_train.item(),
+        #     }
+        # )
 
-        if scheduler is not None:
+        if config["cosine_schedule"]:
             scheduler.step()
+            # wandb.log({"lr": float(scheduler.get_last_lr()[-1])})
         optimizer.step()
+        break
 
-    wandb.log(
-        {
-            "train_accuracy_epoch_top1": total_epoch_correct_train / total_epoch_samples,
-            "train_accuracy_epoch_top5": total_epoch_correct_top5_train / total_epoch_samples,
-            "train_loss_epoch": sum(curr_epoch_losses_train) / len(training_loader),
-            "epoch_nr": epoch,
-        }
-    )
-    save_run(model, optimizer, wandb.run.name, epoch)
+    # wandb.log(
+    #     {
+    #         "train_accuracy_epoch_top1": total_epoch_correct_train / total_epoch_samples,
+    #         "train_accuracy_epoch_top5": total_epoch_correct_top5_train / total_epoch_samples,
+    #         "train_loss_epoch": sum(curr_epoch_losses_train) / len(training_loader),
+    #         "epoch_nr": epoch,
+    #     }
+    # )
+    # save_run(model, optimizer, wandb.run.name, epoch)
 
 
 def val_epoch(model, validation_loader, device, loss, wandb):
@@ -67,7 +73,7 @@ def val_epoch(model, validation_loader, device, loss, wandb):
     total_samples = 0
     with torch.no_grad():
         for i, data in enumerate(tqdm.tqdm(validation_loader)):
-            images, _, labels = data
+            images, labels = data
             images = images.to(device)
             labels = labels.to(device)
 
@@ -82,14 +88,15 @@ def val_epoch(model, validation_loader, device, loss, wandb):
             total_correct += corrects[0]
             total_correct_top5 += corrects[1]
             total_samples += len(images)
+            break
 
-    wandb.log(
-        {
-            "valid_accuracy_epoch_top1": total_correct / total_samples,
-            "valid_accuracy_epoch_top5": total_correct_top5 / total_samples,
-            "valid_loss_epoch": total_loss / total_batches,
-        }
-    )
+    # wandb.log(
+    #     {
+    #         "valid_accuracy_epoch_top1": total_correct / total_samples,
+    #         "valid_accuracy_epoch_top5": total_correct_top5 / total_samples,
+    #         "valid_loss_epoch": total_loss / total_batches,
+    #     }
+    # )
 
 
 def test_epoch(model, test_loader, device, wandb):
@@ -103,7 +110,8 @@ def test_epoch(model, test_loader, device, wandb):
             label = data["label"].to(device)
 
             outputs = model(images).logits
-            outputs = torch.sum(outputs, 0)
+            outputs = softmax(outputs)
+            outputs = torch.sum(outputs, 0) / outputs.shape[0]
 
             outputs = outputs.unsqueeze(dim=0)
             label = label.unsqueeze(dim=0)
@@ -112,6 +120,9 @@ def test_epoch(model, test_loader, device, wandb):
             total_correct_top5 += corrects[1]
             total_samples += 1
 
-    wandb.log(
-        {"test_accuracy_top1": total_correct / total_samples, "test_accuracy_top5": total_correct_top5 / total_samples}
-    )
+    # wandb.log(
+    #     {
+    #         "test_accuracy_epoch_top1": total_correct / total_samples,
+    #         "test_accuracy_epoch_top5": total_correct_top5 / total_samples,
+    #     }
+    # )

@@ -12,7 +12,6 @@ from torchvision.transforms.v2 import (
     CenterCrop,
     Lambda,
 )
-from transforms import Div255, SplitEqually
 from pytorchvideo.transforms import UniformTemporalSubsample, ApplyTransformToKey
 
 
@@ -38,7 +37,7 @@ class SplitEqually(object):
         return torch.stack(seqs)
 
 
-def get_transforms(config, CLASSES_LIST):
+def get_transforms(config, CLASSES_LIST, dataset_name):
     if not config["augmentations"]:
         ds_transform_train = Compose(
             transforms=[
@@ -81,23 +80,32 @@ def get_transforms(config, CLASSES_LIST):
         ]
     )
 
-    test_transform = Compose(
-        [
-            ApplyTransformToKey(
-                key="video",
-                transform=Compose(
-                    [
-                        Lambda(lambda x: x.type(torch.uint8)),
-                        Lambda(lambda x: x.permute(1, 0, 2, 3)),
-                        SplitEqually(num_frames=64),
-                        UniformTemporalSubsample(num_samples=8, temporal_dim=-4),
-                        CenterCrop(size=(224, 224)),
-                        Div255(),
-                        Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-                    ]
-                ),
+    def convert_dtype(x):
+        return x.type(torch.uint8)
+
+    def swap_dims(x):
+        return x.permute(1, 0, 2, 3)
+
+    def get_label_idx(x, CLASSES_LIST=CLASSES_LIST):
+        return CLASSES_LIST.index(x)
+
+    test_transforms_list = [
+        ApplyTransformToKey(
+            key="video",
+            transform=Compose(
+                [
+                    Lambda(convert_dtype),
+                    Lambda(swap_dims),
+                    SplitEqually(num_frames=64),
+                    UniformTemporalSubsample(num_samples=8, temporal_dim=-4),
+                    CenterCrop(size=(224, 224)),
+                    Div255(),
+                    Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                ]
             ),
-            ApplyTransformToKey(key="label", transform=Compose([lambda x: CLASSES_LIST.index(x)])),
-        ]
-    )
+        )
+    ]
+    if dataset_name.strip().lower() == "hmdb51":
+        test_transforms_list.append(ApplyTransformToKey(key="label", transform=Compose([get_label_idx])))
+    test_transform = Compose(test_transforms_list)
     return ds_transform_train, ds_transform_valid, test_transform

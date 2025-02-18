@@ -3,7 +3,6 @@ import torch
 def accuracy(output, target, topk=(1,)):
     with torch.no_grad():
         maxk = max(topk)  # max number labels we will consider in the right choices for out model
-        batch_size = target.size(0)
 
         _, y_pred = output.topk(k=maxk, dim=1)  # _, [B, n_classes] -> [B, maxk]
         y_pred = y_pred.t()  # [B, maxk] -> [maxk, B] Expects input to be <= 2-D tensor and transposes dimensions 0 and 1.

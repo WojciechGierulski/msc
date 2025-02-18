@@ -25,5 +25,12 @@ def load_run(model, optimizer, run_name):
     return model, optimizer, checkpoint["epoch"]
 
 
-def show_img_chw(img):
-    plt.imshow(img.permute(1, 2, 0))
+def show_img_chw(img, denormalize=False):
+    # Scaling factors for each channel
+    if denormalize:
+        means = torch.tensor([0.485, 0.456, 0.406]).view(-1, 1, 1)
+        stds = torch.tensor([0.229, 0.224, 0.225]).view(-1, 1, 1)
+        img = img * stds
+        img = img + means
+    img = img.permute(1, 2, 0)
+    plt.imshow(img)

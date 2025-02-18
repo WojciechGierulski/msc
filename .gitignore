@@ -4,3 +4,4 @@ datasets
 wandb
 __pycache__
 checkpoints
+cache
