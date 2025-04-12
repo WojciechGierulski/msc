@@ -18,8 +18,7 @@ from pytorchvideo.transforms import MixUp
 if __name__ == "__main__":
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    device = "cpu"
-    # wandb.login(key="25a61b596081a070a75d3cfc16bfad96632650fc")
+    wandb.login(key="25a61b596081a070a75d3cfc16bfad96632650fc")
 
     config = {
         "base_learning_rate": 0.001,
@@ -27,46 +26,45 @@ if __name__ == "__main__":
         "epochs": 10,
         "frames": 8,
         "val_epochs": 1,
-        "batch_size": 20,
-        "weight_decay": 1e-5,
+        "batch_size": 50,
+        "weight_decay": 0,
         "load_run": False,
         "init_vit": True,
         "vit_base_size": "tiny",
         "cosine_schedule": True,
         "augmentations": True,
-        "advanced_augmentations": True,
-        "mixup": True,
-        "mixup_alpha": 0.2,
+        "advanced_augmentations": False,
+        "mixup": False,
+        "mixup_alpha": 0.0,
         "dataset": "ucf101",
     }
 
-    # wandb.init(project="msc", config=config)
+    wandb.init(project="msc", config=config)
 
-    # wandb.define_metric("epoch_nr")
-    # wandb.define_metric("train_accuracy_step_top1")
-    # wandb.define_metric("train_accuracy_step_top5")
-    # wandb.define_metric("train_accuracy_epoch_top1", step_metric="epoch_nr")
-    # wandb.define_metric("train_accuracy_epoch_top5", step_metric="epoch_nr")
-    # wandb.define_metric("valid_accuracy_epoch_top1", step_metric="epoch_nr")
-    # wandb.define_metric("valid_accuracy_epoch_top5", step_metric="epoch_nr")
-    # wandb.define_metric("test_accuracy_epoch_top1", step_metric="epoch_nr")
-    # wandb.define_metric("test_accuracy_epoch_top5", step_metric="epoch_nr")
-    # wandb.define_metric("valid_loss_epoch", step_metric="epoch_nr")
-    # wandb.define_metric("train_loss_step")
-    # wandb.define_metric("train_loss_epoch", step_metric="epoch_nr")
+    wandb.define_metric("epoch_nr")
+    wandb.define_metric("train_accuracy_step_top1")
+    wandb.define_metric("train_accuracy_step_top5")
+    wandb.define_metric("train_accuracy_epoch_top1", step_metric="epoch_nr")
+    wandb.define_metric("train_accuracy_epoch_top5", step_metric="epoch_nr")
+    wandb.define_metric("valid_accuracy_epoch_top1", step_metric="epoch_nr")
+    wandb.define_metric("valid_accuracy_epoch_top5", step_metric="epoch_nr")
+    wandb.define_metric("test_accuracy_epoch_top1", step_metric="epoch_nr")
+    wandb.define_metric("test_accuracy_epoch_top5", step_metric="epoch_nr")
+    wandb.define_metric("valid_loss_epoch", step_metric="epoch_nr")
+    wandb.define_metric("train_loss_step")
+    wandb.define_metric("train_loss_epoch", step_metric="epoch_nr")
 
     CLASSES_LIST = get_classes(config["dataset"])
 
     VIT_CONFIG = get_vit_config(config["vit_base_size"])
 
-    ds_transform_train, ds_transform_valid, test_transform = get_transforms(config, CLASSES_LIST, config['dataset'])
+    ds_transform_train, ds_transform_valid, test_transform = get_transforms(config, CLASSES_LIST, config["dataset"])
 
     dataset_train, dataset_valid, dataset_test, num_labels = get_dataset(
         config["dataset"], ds_transform_train, ds_transform_valid, test_transform, lazy=True
     )
 
     vit = ViTForImageClassification.from_pretrained(f"WinKawaks/vit-{config['vit_base_size']}-patch16-224")
-    vit = vit.to("cpu")
 
     timesformer_config = TimesformerConfig(num_frames=config["frames"], **VIT_CONFIG, num_labels=num_labels)
     timesformer = TimesformerForVideoClassification(timesformer_config)
@@ -88,14 +86,16 @@ if __name__ == "__main__":
 
     if config["cosine_schedule"]:
         scheduler = WarmupCosineSchedule(
-            optimizer, warmup_steps=int(0.06 * len(training_loader)), t_total=len(training_loader) * epochs
+            optimizer, warmup_steps=int(0.06 * len(training_loader) * epochs), t_total=len(training_loader) * epochs
         )
     else:
         scheduler = None
     loss = torch.nn.functional.cross_entropy
 
     if config["mixup"]:
-        mixup = MixUp(alpha=config["mixup_alpha"], num_classes=len(CLASSES_LIST), label_smoothing=config['label_smoothing'])
+        mixup = MixUp(
+            alpha=config["mixup_alpha"], num_classes=len(CLASSES_LIST), label_smoothing=config["label_smoothing"]
+        )
     else:
         mixup = None
 
@@ -121,4 +121,4 @@ if __name__ == "__main__":
 
         if epoch % config["val_epochs"] == 0:
             val_epoch(timesformer, validation_loader, device, loss, wandb)
-            test_epoch(timesformer, test_loader, device, wandb)
+    test_epoch(timesformer, test_loader, device, wandb)

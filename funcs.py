@@ -39,29 +39,28 @@ def train_epoch(
         total_epoch_correct_train += corrects[0]
         total_epoch_correct_top5_train += corrects[1]
         curr_epoch_losses_train.append(loss_train.item())
-        # wandb.log(
-        #     {
-        #         "train_accuracy_step_top1": corrects[0] / len(images),
-        #         "train_accuracy_step_top5": corrects[1] / len(images),
-        #         "train_loss_step": loss_train.item(),
-        #     }
-        # )
+        wandb.log(
+            {
+                "train_accuracy_step_top1": corrects[0] / len(images),
+                "train_accuracy_step_top5": corrects[1] / len(images),
+                "train_loss_step": loss_train.item(),
+            }
+        )
 
         if config["cosine_schedule"]:
             scheduler.step()
-            # wandb.log({"lr": float(scheduler.get_last_lr()[-1])})
+            wandb.log({"lr": float(scheduler.get_last_lr()[-1])})
         optimizer.step()
-        break
 
-    # wandb.log(
-    #     {
-    #         "train_accuracy_epoch_top1": total_epoch_correct_train / total_epoch_samples,
-    #         "train_accuracy_epoch_top5": total_epoch_correct_top5_train / total_epoch_samples,
-    #         "train_loss_epoch": sum(curr_epoch_losses_train) / len(training_loader),
-    #         "epoch_nr": epoch,
-    #     }
-    # )
-    # save_run(model, optimizer, wandb.run.name, epoch)
+    wandb.log(
+        {
+            "train_accuracy_epoch_top1": total_epoch_correct_train / total_epoch_samples,
+            "train_accuracy_epoch_top5": total_epoch_correct_top5_train / total_epoch_samples,
+            "train_loss_epoch": sum(curr_epoch_losses_train) / len(training_loader),
+            "epoch_nr": epoch,
+        }
+    )
+    save_run(model, optimizer, wandb.run.name, epoch)
 
 
 def val_epoch(model, validation_loader, device, loss, wandb):
@@ -88,15 +87,14 @@ def val_epoch(model, validation_loader, device, loss, wandb):
             total_correct += corrects[0]
             total_correct_top5 += corrects[1]
             total_samples += len(images)
-            break
 
-    # wandb.log(
-    #     {
-    #         "valid_accuracy_epoch_top1": total_correct / total_samples,
-    #         "valid_accuracy_epoch_top5": total_correct_top5 / total_samples,
-    #         "valid_loss_epoch": total_loss / total_batches,
-    #     }
-    # )
+    wandb.log(
+        {
+            "valid_accuracy_epoch_top1": total_correct / total_samples,
+            "valid_accuracy_epoch_top5": total_correct_top5 / total_samples,
+            "valid_loss_epoch": total_loss / total_batches,
+        }
+    )
 
 
 def test_epoch(model, test_loader, device, wandb):
@@ -120,9 +118,9 @@ def test_epoch(model, test_loader, device, wandb):
             total_correct_top5 += corrects[1]
             total_samples += 1
 
-    # wandb.log(
-    #     {
-    #         "test_accuracy_epoch_top1": total_correct / total_samples,
-    #         "test_accuracy_epoch_top5": total_correct_top5 / total_samples,
-    #     }
-    # )
+    wandb.log(
+        {
+            "test_accuracy_epoch_top1": total_correct / total_samples,
+            "test_accuracy_epoch_top5": total_correct_top5 / total_samples,
+        }
+    )

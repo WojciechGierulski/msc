@@ -62,9 +62,9 @@ def get_transforms(config, CLASSES_LIST, dataset_name):
             transforms=[
                 UniformTemporalSubsample(num_samples=config["frames"], temporal_dim=0),
                 RandomHorizontalFlip(p=0.5),
-                ScaleJitter(target_size=(240, 320), scale_range=(0.9, 1.33)),
+                ScaleJitter(target_size=(240, 320), scale_range=(0.85, 1.33)),
                 RandomCrop(size=(224, 224), pad_if_needed=True, fill=128),
-                RandomApply(p=0.8, transforms=[ColorJitter(brightness=0.2, contrast=0.1, saturation=0.1, hue=0.1)]),
+                RandomApply(p=0.8, transforms=[ColorJitter(brightness=0.2, contrast=0.2, saturation=0.1, hue=0.1)]),
                 RandAugment(num_ops=2, magnitude=10, fill=128),
                 Div255(),
                 Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),

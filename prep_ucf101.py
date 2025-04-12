@@ -13,11 +13,11 @@ gdown.download(id=id, output=output)
 patoolib.extract_archive("datasets/data.rar", outdir="datasets/")
 
 
-### add classes to test splits
+## add classes to test splits
 # path = "datasets/ucf101/test_train_splits/ucfTrainTestlist/"
 # for file in ["testlist01.txt", "testlist02.txt", "testlist03.txt"]:
 #     filepath = f"{path}{file}"
- #     with open(filepath, "r") as file:
+#     with open(filepath, "r") as file:
 #         lines = file.readlines()
 #     new_lines = []
 #     for line in lines:
