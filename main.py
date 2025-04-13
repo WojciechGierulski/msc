@@ -22,11 +22,11 @@ CONFIG = {
     "epochs": 10,
     "frames": 8,
     "val_epochs": 1,
-    "batch_size": 2,
+    "batch_size": 50,
     "weight_decay": 0,
     "load_run": False,
     "init_vit": True,
-    "vit_base_size": "tiny",
+    "vit_base_size": "small",
     "cosine_schedule": False,
     "augmentations": True,
     "advanced_augmentations": True,
@@ -34,9 +34,9 @@ CONFIG = {
     "mixup_alpha": 0.0,
     "dataset": "ucf101",
     "subsample": None,
-    "switch": True,
+    "switch": False,
     "switch_layers": [0, 1],
-    "n_experts": 4,
+    "n_experts": -1,
     "load_balance_alpha": 0.01,
     "model": "timesformer",
 }
@@ -101,7 +101,7 @@ def main_func(config):
         )
 
     training_loader, validation_loader, test_loader = get_loaders(
-        dataset_train, dataset_valid, dataset_test, SEED, config["batch_size"], n_workers=1
+        dataset_train, dataset_valid, dataset_test, SEED, config["batch_size"], n_workers=12
     )
 
     epochs = config["epochs"]
