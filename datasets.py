@@ -1,10 +1,12 @@
 from torchvision.datasets import HMDB51, UCF101
+from torch.utils.data import Subset
 from pytorchvideo.data.hmdb51 import Hmdb51
 from pytorchvideo.data.ucf101 import Ucf101
 from pytorchvideo.data.clip_sampling import UniformClipSampler
 import os
 import pickle
-from constants import UCF101_CLASSES
+from sklearn.model_selection import train_test_split
+import numpy as np
 
 
 class CustomUCF101(UCF101):
@@ -38,7 +40,17 @@ def load_lazy(dataset):
     return dataset_train, dataset_valid
 
 
-def get_dataset(dataset: str, ds_transform_train, ds_transform_valid, test_transform, lazy=True):
+def stratify_dataset(sample_size: float, dataset):
+    video_idxs = [dataset.video_clips.get_clip_location(item_idx)[0] for item_idx in range(len(dataset))]
+    classes = [dataset.samples[dataset.indices[video_idx]][1] for video_idx in video_idxs]
+    _, test_idx = train_test_split(np.arange(len(classes)), test_size=sample_size, shuffle=True, stratify=classes)
+    sample = Subset(dataset, test_idx)
+    return sample
+
+
+def get_dataset(
+    dataset: str, ds_transform_train, ds_transform_valid, test_transform, lazy=True, subsample=None, num_workers=5
+):
     if dataset not in ["hmdb51", "ucf101"]:
         raise ValueError(f"Wrong dataset {dataset}")
     if dataset == "hmdb51":
@@ -63,7 +75,7 @@ def get_dataset(dataset: str, ds_transform_train, ds_transform_valid, test_trans
                 annotation_path="datasets/hmdb/test_train_splits/testTrainMulti_7030_splits",
                 frames_per_clip=64,
                 step_between_clips=64,
-                num_workers=10,
+                num_workers=num_workers,
                 transform=ds_transform_train,
                 train=True,
                 output_format="TCHW",
@@ -73,7 +85,7 @@ def get_dataset(dataset: str, ds_transform_train, ds_transform_valid, test_trans
                 annotation_path="datasets/hmdb/test_train_splits/testTrainMulti_7030_splits",
                 frames_per_clip=64,
                 step_between_clips=64,
-                num_workers=10,
+                num_workers=num_workers,
                 transform=ds_transform_valid,
                 train=False,
                 output_format="TCHW",
@@ -99,7 +111,7 @@ def get_dataset(dataset: str, ds_transform_train, ds_transform_valid, test_trans
                 annotation_path="datasets/ucf101/test_train_splits/ucfTrainTestlist",
                 frames_per_clip=64,
                 step_between_clips=64,
-                num_workers=10,
+                num_workers=num_workers,
                 transform=ds_transform_train,
                 train=True,
                 output_format="TCHW",
@@ -109,7 +121,7 @@ def get_dataset(dataset: str, ds_transform_train, ds_transform_valid, test_trans
                 annotation_path="datasets/ucf101/test_train_splits/ucfTrainTestlist",
                 frames_per_clip=64,
                 step_between_clips=64,
-                num_workers=10,
+                num_workers=num_workers,
                 transform=ds_transform_valid,
                 train=False,
                 output_format="TCHW",
@@ -126,5 +138,9 @@ def get_dataset(dataset: str, ds_transform_train, ds_transform_valid, test_trans
     dataset_train.transform = ds_transform_train
     dataset_valid.transform = ds_transform_valid
     dataset_test._transform = test_transform
+
+    if subsample:
+        dataset_train = stratify_dataset(subsample, dataset_train)
+        dataset_valid = stratify_dataset(subsample, dataset_valid)
 
     return dataset_train, dataset_valid, dataset_test, num_labels
