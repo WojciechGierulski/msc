@@ -25,7 +25,7 @@ if __name__ == "__main__":
     np.random.seed(SEED)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    # wandb.login(key="25a61b596081a070a75d3cfc16bfad96632650fc")
+    wandb.login(key="25a61b596081a070a75d3cfc16bfad96632650fc")
 
     config = {
         "base_learning_rate": 0.0001,
@@ -47,20 +47,20 @@ if __name__ == "__main__":
         "subsample": None,
     }
 
-    # wandb.init(project="msc", config=config)
+    wandb.init(project="msc", config=config)
 
-    # wandb.define_metric("epoch_nr")
-    # wandb.define_metric("train_accuracy_step_top1")
-    # wandb.define_metric("train_accuracy_step_top5")
-    # wandb.define_metric("train_accuracy_epoch_top1", step_metric="epoch_nr")
-    # wandb.define_metric("train_accuracy_epoch_top5", step_metric="epoch_nr")
-    # wandb.define_metric("valid_accuracy_epoch_top1", step_metric="epoch_nr")
-    # wandb.define_metric("valid_accuracy_epoch_top5", step_metric="epoch_nr")
-    # wandb.define_metric("test_accuracy_epoch_top1", step_metric="epoch_nr")
-    # wandb.define_metric("test_accuracy_epoch_top5", step_metric="epoch_nr")
-    # wandb.define_metric("valid_loss_epoch", step_metric="epoch_nr")
-    # wandb.define_metric("train_loss_step")
-    # wandb.define_metric("train_loss_epoch", step_metric="epoch_nr")
+    wandb.define_metric("epoch_nr")
+    wandb.define_metric("train_accuracy_step_top1")
+    wandb.define_metric("train_accuracy_step_top5")
+    wandb.define_metric("train_accuracy_epoch_top1", step_metric="epoch_nr")
+    wandb.define_metric("train_accuracy_epoch_top5", step_metric="epoch_nr")
+    wandb.define_metric("valid_accuracy_epoch_top1", step_metric="epoch_nr")
+    wandb.define_metric("valid_accuracy_epoch_top5", step_metric="epoch_nr")
+    wandb.define_metric("test_accuracy_epoch_top1", step_metric="epoch_nr")
+    wandb.define_metric("test_accuracy_epoch_top5", step_metric="epoch_nr")
+    wandb.define_metric("valid_loss_epoch", step_metric="epoch_nr")
+    wandb.define_metric("train_loss_step")
+    wandb.define_metric("train_loss_epoch", step_metric="epoch_nr")
 
     CLASSES_LIST = get_classes(config["dataset"])
 
