@@ -4,6 +4,7 @@ from utils import save_run
 from metrics import accuracy
 from utils import show_img_chw
 from torch.nn.functional import softmax
+from models.switch.switch_timesformer import collect_route_stats, clear_memory
 
 
 def train_epoch(
@@ -12,6 +13,8 @@ def train_epoch(
     model.train()
     print(f"Current epoch: {epoch}")
     curr_epoch_losses_train = []
+    curr_epoch_losses_classification_train = []
+    curr_epoch_losses_load_balance_train = []
     total_epoch_samples = 0
     total_epoch_correct_train = 0
     total_epoch_correct_top5_train = 0
@@ -20,18 +23,38 @@ def train_epoch(
         images = images.to(device)
         labels = labels.to(device)
 
-        optimizer.zero_grad()
-
         if config["mixup"]:
             images, labels_mixed_up = mixup(images.permute((0, 2, 1, 3, 4)), labels)
             images = images.permute((0, 2, 1, 3, 4))
             outputs = model(images).logits
-            loss_train = loss(outputs, labels_mixed_up)
+            loss_train_classification = loss(outputs, labels_mixed_up)
         else:
             outputs = model(images).logits
-            loss_train = loss(outputs, labels, label_smoothing=label_smoothing)
+            loss_train_classification = loss(outputs, labels, label_smoothing=label_smoothing)
+
+        if config["switch"]:
+            counts, route_prob, route_prob_max = collect_route_stats(model, config["switch_layers"])
+            total = counts.sum(dim=-1, keepdims=True)
+            route_frac = counts / total
+            route_prob = route_prob / total
+            load_balancing_loss = config["load_balance_alpha"] * config["n_experts"] * (route_frac * route_prob).sum()
+        else:
+            load_balancing_loss = torch.tensor(0).to(device)
+
+        loss_train = loss_train_classification + load_balancing_loss
+
+        if config["cosine_schedule"]:
+            scheduler.step()
+            wandb.log({"lr": float(scheduler.get_last_lr()[-1])})
+        else:
+            wandb.log({"lr": optimizer.param_groups[0]["lr"]})
 
         loss_train.backward()
+        optimizer.step()
+        optimizer.zero_grad()
+
+        if config["switch"]:
+            clear_memory(model, config["switch_layers"])
 
         # logging
         total_epoch_samples += len(images)
@@ -39,24 +62,25 @@ def train_epoch(
         total_epoch_correct_train += corrects[0]
         total_epoch_correct_top5_train += corrects[1]
         curr_epoch_losses_train.append(loss_train.item())
+        curr_epoch_losses_classification_train.append(loss_train_classification.item())
+        curr_epoch_losses_load_balance_train.append(loss_train_classification.item())
         wandb.log(
             {
                 "train_accuracy_step_top1": corrects[0] / len(images),
                 "train_accuracy_step_top5": corrects[1] / len(images),
                 "train_loss_step": loss_train.item(),
+                "train_load_balancing_loss_step": load_balancing_loss.item(),
+                "train_classification_loss_step": loss_train_classification.item(),
             }
         )
-
-        if config["cosine_schedule"]:
-            scheduler.step()
-            wandb.log({"lr": float(scheduler.get_last_lr()[-1])})
-        optimizer.step()
 
     wandb.log(
         {
             "train_accuracy_epoch_top1": total_epoch_correct_train / total_epoch_samples,
             "train_accuracy_epoch_top5": total_epoch_correct_top5_train / total_epoch_samples,
             "train_loss_epoch": sum(curr_epoch_losses_train) / len(training_loader),
+            "train_load_balancing_loss_epoch": sum(curr_epoch_losses_classification_train) / len(training_loader),
+            "train_classification_loss_epoch": sum(curr_epoch_losses_load_balance_train) / len(training_loader),
             "epoch_nr": epoch,
         }
     )

@@ -15,52 +15,61 @@ from loaders import get_loaders
 from transformers import TimesformerConfig, TimesformerForVideoClassification
 from transformers import ViTForImageClassification
 from pytorchvideo.transforms import MixUp
+from models.switch.switch_timesformer import timesformer_to_switch
 
 
-if __name__ == "__main__":
+CONFIG = {
+    "base_learning_rate": 0.0001,
+    "label_smoothing": 0.0,
+    "epochs": 10,
+    "frames": 8,
+    "val_epochs": 1,
+    "batch_size": 2,
+    "weight_decay": 0,
+    "load_run": False,
+    "init_vit": True,
+    "vit_base_size": "tiny",
+    "cosine_schedule": False,
+    "augmentations": True,
+    "advanced_augmentations": True,
+    "mixup": False,
+    "mixup_alpha": 0.0,
+    "dataset": "ucf101",
+    "subsample": None,
+    "switch": True,
+    "switch_layers": [0, 1],
+    "n_experts": 4,
+    "load_balance_alpha": 0.01,
+}
 
+
+def main_func(config):
     SEED = 0
     torch.manual_seed(SEED)
     random.seed(SEED)
     np.random.seed(SEED)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    # wandb.login(key="25a61b596081a070a75d3cfc16bfad96632650fc")
+    wandb.login(key="25a61b596081a070a75d3cfc16bfad96632650fc")
 
-    config = {
-        "base_learning_rate": 0.0001,
-        "label_smoothing": 0.0,
-        "epochs": 10,
-        "frames": 8,
-        "val_epochs": 1,
-        "batch_size": 50,
-        "weight_decay": 0,
-        "load_run": False,
-        "init_vit": True,
-        "vit_base_size": "tiny",
-        "cosine_schedule": False,
-        "augmentations": True,
-        "advanced_augmentations": True,
-        "mixup": False,
-        "mixup_alpha": 0.0,
-        "dataset": "ucf101",
-        "subsample": None,
-    }
+    wandb.init(project="msc", config=config)
 
-    # wandb.init(project="msc", config=config)
-
-    # wandb.define_metric("epoch_nr")
-    # wandb.define_metric("train_accuracy_step_top1")
-    # wandb.define_metric("train_accuracy_step_top5")
-    # wandb.define_metric("train_accuracy_epoch_top1", step_metric="epoch_nr")
-    # wandb.define_metric("train_accuracy_epoch_top5", step_metric="epoch_nr")
-    # wandb.define_metric("valid_accuracy_epoch_top1", step_metric="epoch_nr")
-    # wandb.define_metric("valid_accuracy_epoch_top5", step_metric="epoch_nr")
-    # wandb.define_metric("test_accuracy_epoch_top1", step_metric="epoch_nr")
-    # wandb.define_metric("test_accuracy_epoch_top5", step_metric="epoch_nr")
-    # wandb.define_metric("valid_loss_epoch", step_metric="epoch_nr")
-    # wandb.define_metric("train_loss_step")
-    # wandb.define_metric("train_loss_epoch", step_metric="epoch_nr")
+    wandb.define_metric("epoch_nr")
+    wandb.define_metric("train_accuracy_step_top1")
+    wandb.define_metric("train_accuracy_step_top5")
+    wandb.define_metric("train_accuracy_epoch_top1", step_metric="epoch_nr")
+    wandb.define_metric("train_accuracy_epoch_top5", step_metric="epoch_nr")
+    wandb.define_metric("valid_accuracy_epoch_top1", step_metric="epoch_nr")
+    wandb.define_metric("valid_accuracy_epoch_top5", step_metric="epoch_nr")
+    wandb.define_metric("test_accuracy_epoch_top1", step_metric="epoch_nr")
+    wandb.define_metric("test_accuracy_epoch_top5", step_metric="epoch_nr")
+    wandb.define_metric("valid_loss_epoch", step_metric="epoch_nr")
+    wandb.define_metric("train_loss_step")
+    wandb.define_metric("train_loss_epoch", step_metric="epoch_nr")
+    wandb.define_metric("train_load_balancing_loss_step")
+    wandb.define_metric("train_classification_loss_step")
+    wandb.define_metric("train_load_balancing_loss_epoch", step_metric="epoch_nr")
+    wandb.define_metric("train_classification_loss_epoch", step_metric="epoch_nr")
 
     CLASSES_LIST = get_classes(config["dataset"])
 
@@ -75,32 +84,45 @@ if __name__ == "__main__":
         test_transform,
         lazy=True,
         subsample=config["subsample"],
-        num_workers=12
+        num_workers=12,
     )
 
     vit = ViTForImageClassification.from_pretrained(f"WinKawaks/vit-{config['vit_base_size']}-patch16-224")
 
     timesformer_config = TimesformerConfig(num_frames=config["frames"], **VIT_CONFIG, num_labels=num_labels)
     timesformer = TimesformerForVideoClassification(timesformer_config)
+
+    if config["switch"]:
+        timesformer = timesformer_to_switch(
+            timesformer, config["switch_layers"], config["n_experts"], timesformer_config
+        )
+
     timesformer.to(device)
 
     if config["init_vit"]:
-        timesformer = init_timesformer(timesformer, vit, VIT_CONFIG["num_hidden_layers"])
+        timesformer = init_timesformer(
+            timesformer, vit, VIT_CONFIG["num_hidden_layers"], config["switch"], config["switch_layers"]
+        )
 
     training_loader, validation_loader, test_loader = get_loaders(
-        dataset_train, dataset_valid, dataset_test, SEED, config["batch_size"], n_workers=12
+        dataset_train, dataset_valid, dataset_test, SEED, config["batch_size"], n_workers=1
     )
 
     epochs = config["epochs"]
     label_smoothing = config["label_smoothing"]
 
     optimizer = torch.optim.SGD(
-        timesformer.parameters(), lr=config["base_learning_rate"], momentum=0.9, weight_decay=config["weight_decay"]
+        timesformer.parameters(),
+        lr=config["base_learning_rate"],
+        momentum=0.9,
+        weight_decay=config["weight_decay"],
     )
 
     if config["cosine_schedule"]:
         scheduler = WarmupCosineSchedule(
-            optimizer, warmup_steps=int(0.06 * len(training_loader) * epochs), t_total=len(training_loader) * epochs
+            optimizer,
+            warmup_steps=int(0.06 * len(training_loader) * epochs),
+            t_total=len(training_loader) * epochs,
         )
     else:
         scheduler = None
@@ -136,3 +158,7 @@ if __name__ == "__main__":
         if epoch % config["val_epochs"] == 0:
             val_epoch(timesformer, validation_loader, device, loss, wandb)
     test_epoch(timesformer, test_loader, device, wandb)
+
+
+if __name__ == "__main__":
+    main_func(CONFIG)
