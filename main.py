@@ -1,15 +1,17 @@
 import wandb
 from datasets import get_dataset
 import torch
-from utils import save_run, load_run, show_img_chw
+import random
+import numpy as np
+from utils import load_run, show_img_chw
 from funcs import train_epoch, val_epoch, test_epoch
 from weight_inits import init_timesformer
-from torch.utils.data import DataLoader
 from models.vivit_custom.utils.scheduler import WarmupCosineSchedule
 from transforms import get_transforms
 
 from constants import get_classes
 from vit_configs import get_vit_config
+from loaders import get_loaders
 from transformers import TimesformerConfig, TimesformerForVideoClassification
 from transformers import ViTForImageClassification
 from pytorchvideo.transforms import MixUp
@@ -17,9 +19,14 @@ from pytorchvideo.transforms import MixUp
 
 if __name__ == "__main__":
 
+    SEED = 0
+    torch.manual_seed(SEED)
+    random.seed(SEED)
+    np.random.seed(SEED)
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
     device = "cpu"
-    # wandb.login(key="25a61b596081a070a75d3cfc16bfad96632650fc")
+    wandb.login(key="25a61b596081a070a75d3cfc16bfad96632650fc")
 
     config = {
         "base_learning_rate": 0.001,
@@ -59,7 +66,7 @@ if __name__ == "__main__":
 
     VIT_CONFIG = get_vit_config(config["vit_base_size"])
 
-    ds_transform_train, ds_transform_valid, test_transform = get_transforms(config, CLASSES_LIST, config['dataset'])
+    ds_transform_train, ds_transform_valid, test_transform = get_transforms(config, CLASSES_LIST, config["dataset"])
 
     dataset_train, dataset_valid, dataset_test, num_labels = get_dataset(
         config["dataset"], ds_transform_train, ds_transform_valid, test_transform, lazy=True
@@ -75,9 +82,9 @@ if __name__ == "__main__":
     if config["init_vit"]:
         timesformer = init_timesformer(timesformer, vit, VIT_CONFIG["num_hidden_layers"])
 
-    training_loader = DataLoader(dataset=dataset_train, batch_size=config["batch_size"], shuffle=True)
-    validation_loader = DataLoader(dataset=dataset_valid, batch_size=config["batch_size"], shuffle=False)
-    test_loader = DataLoader(dataset=dataset_test, batch_size=1)
+    training_loader, validation_loader, test_loader = get_loaders(
+        dataset_train, dataset_valid, dataset_test, SEED, config["batch_size"]
+    )
 
     epochs = config["epochs"]
     label_smoothing = config["label_smoothing"]
@@ -95,7 +102,9 @@ if __name__ == "__main__":
     loss = torch.nn.functional.cross_entropy
 
     if config["mixup"]:
-        mixup = MixUp(alpha=config["mixup_alpha"], num_classes=len(CLASSES_LIST), label_smoothing=config['label_smoothing'])
+        mixup = MixUp(
+            alpha=config["mixup_alpha"], num_classes=len(CLASSES_LIST), label_smoothing=config["label_smoothing"]
+        )
     else:
         mixup = None
 

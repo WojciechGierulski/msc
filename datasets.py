@@ -63,7 +63,7 @@ def get_dataset(dataset: str, ds_transform_train, ds_transform_valid, test_trans
                 annotation_path="datasets/hmdb/test_train_splits/testTrainMulti_7030_splits",
                 frames_per_clip=64,
                 step_between_clips=64,
-                num_workers=4,
+                num_workers=10,
                 transform=ds_transform_train,
                 train=True,
                 output_format="TCHW",
@@ -73,7 +73,7 @@ def get_dataset(dataset: str, ds_transform_train, ds_transform_valid, test_trans
                 annotation_path="datasets/hmdb/test_train_splits/testTrainMulti_7030_splits",
                 frames_per_clip=64,
                 step_between_clips=64,
-                num_workers=4,
+                num_workers=10,
                 transform=ds_transform_valid,
                 train=False,
                 output_format="TCHW",
@@ -99,7 +99,7 @@ def get_dataset(dataset: str, ds_transform_train, ds_transform_valid, test_trans
                 annotation_path="datasets/ucf101/test_train_splits/ucfTrainTestlist",
                 frames_per_clip=64,
                 step_between_clips=64,
-                num_workers=4,
+                num_workers=10,
                 transform=ds_transform_train,
                 train=True,
                 output_format="TCHW",
@@ -109,7 +109,7 @@ def get_dataset(dataset: str, ds_transform_train, ds_transform_valid, test_trans
                 annotation_path="datasets/ucf101/test_train_splits/ucfTrainTestlist",
                 frames_per_clip=64,
                 step_between_clips=64,
-                num_workers=4,
+                num_workers=10,
                 transform=ds_transform_valid,
                 train=False,
                 output_format="TCHW",
@@ -122,4 +122,9 @@ def get_dataset(dataset: str, ds_transform_train, ds_transform_valid, test_trans
         num_labels = 101
     elif dataset == "hmdb51":
         num_labels = 51
+
+    dataset_train.transform = ds_transform_train
+    dataset_valid.transform = ds_transform_valid
+    dataset_test._transform = test_transform
+
     return dataset_train, dataset_valid, dataset_test, num_labels
