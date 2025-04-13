@@ -43,7 +43,7 @@ def get_dataset(dataset: str, ds_transform_train, ds_transform_valid, test_trans
         raise ValueError(f"Wrong dataset {dataset}")
     if dataset == "hmdb51":
         dataset_test = Hmdb51(
-            data_path=r"datasets\hmdb\test_train_splits\testTrainMulti_7030_splits",
+            data_path=r"datasets/hmdb/test_train_splits/testTrainMulti_7030_splits",
             clip_sampler=UniformClipSampler(1000),  # sample whole clips
             decode_audio=False,
             video_path_prefix="datasets/hmdb/data",
