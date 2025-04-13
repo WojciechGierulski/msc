@@ -7,8 +7,7 @@ pip install torch torchvision torchaudio
 # windows
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 
-pip install "numpy<2"
-pip install wandb matplotlib transformers[torch] tqdm patool
+pip install "numpy<2" wandb matplotlib transformers[torch] tqdm patool gdown scikit-learn
 pip install git+https://github.com/facebookresearch/pytorchvideo
 
 # optional for old environment

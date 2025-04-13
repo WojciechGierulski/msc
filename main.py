@@ -28,8 +28,8 @@ if __name__ == "__main__":
     wandb.login(key="25a61b596081a070a75d3cfc16bfad96632650fc")
 
     config = {
-        "base_learning_rate": 0.001,
-        "label_smoothing": 0.2,
+        "base_learning_rate": 0.0001,
+        "label_smoothing": 0.0,
         "epochs": 10,
         "frames": 8,
         "val_epochs": 1,
@@ -38,29 +38,29 @@ if __name__ == "__main__":
         "load_run": False,
         "init_vit": True,
         "vit_base_size": "tiny",
-        "cosine_schedule": True,
+        "cosine_schedule": False,
         "augmentations": True,
-        "advanced_augmentations": False,
+        "advanced_augmentations": True,
         "mixup": False,
         "mixup_alpha": 0.0,
         "dataset": "ucf101",
-        "subsample": 0.3,
+        "subsample": None,
     }
 
-    # wandb.init(project="msc", config=config)
+    wandb.init(project="msc", config=config)
 
-    # wandb.define_metric("epoch_nr")
-    # wandb.define_metric("train_accuracy_step_top1")
-    # wandb.define_metric("train_accuracy_step_top5")
-    # wandb.define_metric("train_accuracy_epoch_top1", step_metric="epoch_nr")
-    # wandb.define_metric("train_accuracy_epoch_top5", step_metric="epoch_nr")
-    # wandb.define_metric("valid_accuracy_epoch_top1", step_metric="epoch_nr")
-    # wandb.define_metric("valid_accuracy_epoch_top5", step_metric="epoch_nr")
-    # wandb.define_metric("test_accuracy_epoch_top1", step_metric="epoch_nr")
-    # wandb.define_metric("test_accuracy_epoch_top5", step_metric="epoch_nr")
-    # wandb.define_metric("valid_loss_epoch", step_metric="epoch_nr")
-    # wandb.define_metric("train_loss_step")
-    # wandb.define_metric("train_loss_epoch", step_metric="epoch_nr")
+    wandb.define_metric("epoch_nr")
+    wandb.define_metric("train_accuracy_step_top1")
+    wandb.define_metric("train_accuracy_step_top5")
+    wandb.define_metric("train_accuracy_epoch_top1", step_metric="epoch_nr")
+    wandb.define_metric("train_accuracy_epoch_top5", step_metric="epoch_nr")
+    wandb.define_metric("valid_accuracy_epoch_top1", step_metric="epoch_nr")
+    wandb.define_metric("valid_accuracy_epoch_top5", step_metric="epoch_nr")
+    wandb.define_metric("test_accuracy_epoch_top1", step_metric="epoch_nr")
+    wandb.define_metric("test_accuracy_epoch_top5", step_metric="epoch_nr")
+    wandb.define_metric("valid_loss_epoch", step_metric="epoch_nr")
+    wandb.define_metric("train_loss_step")
+    wandb.define_metric("train_loss_epoch", step_metric="epoch_nr")
 
     CLASSES_LIST = get_classes(config["dataset"])
 
@@ -75,7 +75,7 @@ if __name__ == "__main__":
         test_transform,
         lazy=True,
         subsample=config["subsample"],
-        num_workers=5
+        num_workers=12
     )
 
     vit = ViTForImageClassification.from_pretrained(f"WinKawaks/vit-{config['vit_base_size']}-patch16-224")
@@ -88,7 +88,7 @@ if __name__ == "__main__":
         timesformer = init_timesformer(timesformer, vit, VIT_CONFIG["num_hidden_layers"])
 
     training_loader, validation_loader, test_loader = get_loaders(
-        dataset_train, dataset_valid, dataset_test, SEED, config["batch_size"], n_workers=10
+        dataset_train, dataset_valid, dataset_test, SEED, config["batch_size"], n_workers=12
     )
 
     epochs = config["epochs"]
