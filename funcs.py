@@ -4,12 +4,13 @@ from utils import save_run
 from metrics import accuracy
 from utils import show_img_chw
 from torch.nn.functional import softmax
-from models.switch.switch_timesformer import collect_route_stats, clear_memory
+from models.switch.utils import collect_route_stats, clear_memory
 
 
 def train_epoch(
     model, device, training_loader, epoch, optimizer, loss, label_smoothing, mixup, scheduler, config, wandb
 ):
+    optimizer.zero_grad()
     model.train()
     print(f"Current epoch: {epoch}")
     curr_epoch_losses_train = []
@@ -63,7 +64,7 @@ def train_epoch(
         total_epoch_correct_top5_train += corrects[1]
         curr_epoch_losses_train.append(loss_train.item())
         curr_epoch_losses_classification_train.append(loss_train_classification.item())
-        curr_epoch_losses_load_balance_train.append(loss_train_classification.item())
+        curr_epoch_losses_load_balance_train.append(load_balancing_loss.item())
         wandb.log(
             {
                 "train_accuracy_step_top1": corrects[0] / len(images),
@@ -79,8 +80,8 @@ def train_epoch(
             "train_accuracy_epoch_top1": total_epoch_correct_train / total_epoch_samples,
             "train_accuracy_epoch_top5": total_epoch_correct_top5_train / total_epoch_samples,
             "train_loss_epoch": sum(curr_epoch_losses_train) / len(training_loader),
-            "train_load_balancing_loss_epoch": sum(curr_epoch_losses_classification_train) / len(training_loader),
-            "train_classification_loss_epoch": sum(curr_epoch_losses_load_balance_train) / len(training_loader),
+            "train_load_balancing_loss_epoch": sum(curr_epoch_losses_load_balance_train) / len(training_loader),
+            "train_classification_loss_epoch": sum(curr_epoch_losses_classification_train) / len(training_loader),
             "epoch_nr": epoch,
         }
     )

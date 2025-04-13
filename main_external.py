@@ -45,6 +45,13 @@ def parse_arguments():
     parser.add_argument(
         "--load_balance_alpha", type=float, default=0.01, help="Alpha parameter for the load balancing loss."
     )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="timesformer",
+        help="Base model architecture.",
+        choices=["timesformer", "vivit", "mvitv2"],
+    )
 
     args = parser.parse_args()
     return vars(args)

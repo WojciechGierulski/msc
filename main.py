@@ -5,17 +5,15 @@ import random
 import numpy as np
 from utils import load_run, show_img_chw
 from funcs import train_epoch, val_epoch, test_epoch
-from weight_inits import init_timesformer
 from models.vivit_custom.utils.scheduler import WarmupCosineSchedule
 from transforms import get_transforms
 
 from constants import get_classes
 from vit_configs import get_vit_config
 from loaders import get_loaders
-from transformers import TimesformerConfig, TimesformerForVideoClassification
 from transformers import ViTForImageClassification
 from pytorchvideo.transforms import MixUp
-from models.switch.switch_timesformer import timesformer_to_switch
+from models.models_functions import get_model, init_model, model_to_switch
 
 
 CONFIG = {
@@ -40,6 +38,7 @@ CONFIG = {
     "switch_layers": [0, 1],
     "n_experts": 4,
     "load_balance_alpha": 0.01,
+    "model": "timesformer",
 }
 
 
@@ -89,19 +88,16 @@ def main_func(config):
 
     vit = ViTForImageClassification.from_pretrained(f"WinKawaks/vit-{config['vit_base_size']}-patch16-224")
 
-    timesformer_config = TimesformerConfig(num_frames=config["frames"], **VIT_CONFIG, num_labels=num_labels)
-    timesformer = TimesformerForVideoClassification(timesformer_config)
+    model, model_config = get_model(config["model"], num_labels, VIT_CONFIG)
 
     if config["switch"]:
-        timesformer = timesformer_to_switch(
-            timesformer, config["switch_layers"], config["n_experts"], timesformer_config
-        )
+        model = model_to_switch(config["model"], model, config, model_config)
 
-    timesformer.to(device)
+    model.to(device)
 
     if config["init_vit"]:
-        timesformer = init_timesformer(
-            timesformer, vit, VIT_CONFIG["num_hidden_layers"], config["switch"], config["switch_layers"]
+        model = init_model(
+            config["model"], model, vit, VIT_CONFIG["num_hidden_layers"], config["switch"], config["switch_layers"]
         )
 
     training_loader, validation_loader, test_loader = get_loaders(
@@ -112,7 +108,7 @@ def main_func(config):
     label_smoothing = config["label_smoothing"]
 
     optimizer = torch.optim.SGD(
-        timesformer.parameters(),
+        model.parameters(),
         lr=config["base_learning_rate"],
         momentum=0.9,
         weight_decay=config["weight_decay"],
@@ -136,13 +132,13 @@ def main_func(config):
         mixup = None
 
     if config["load_run"]:
-        timesformer, optimizer, prev_epoch = load_run(timesformer, optimizer, config["load_run"])
+        model, optimizer, prev_epoch = load_run(model, optimizer, config["load_run"])
     else:
         prev_epoch = 0
 
     for epoch in range(1 + prev_epoch, 1 + prev_epoch + epochs):
         train_epoch(
-            timesformer,
+            model,
             device,
             training_loader,
             epoch,
@@ -156,8 +152,8 @@ def main_func(config):
         )
 
         if epoch % config["val_epochs"] == 0:
-            val_epoch(timesformer, validation_loader, device, loss, wandb)
-    test_epoch(timesformer, test_loader, device, wandb)
+            val_epoch(model, validation_loader, device, loss, wandb)
+    test_epoch(model, test_loader, device, wandb)
 
 
 if __name__ == "__main__":

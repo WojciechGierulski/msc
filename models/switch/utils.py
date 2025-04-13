@@ -1,7 +1,8 @@
-from transformers import TimesformerForVideoClassification, TimesformerConfig
+from transformers import TimesformerForVideoClassification, TimesformerConfig, VivitConfig, VivitForVideoClassification
 from models.switch.switch_ff import SwitchFeedForward
 import torch
 from labml_nn.transformers.feed_forward import FeedForward
+from transformers.activations import FastGELUActivation, GELUActivation
 
 
 def timesformer_to_switch(
@@ -17,12 +18,31 @@ def timesformer_to_switch(
                     d_model=config.hidden_size,
                     d_ff=config.intermediate_size,
                     dropout=0,
-                    activation=torch.nn.GELU(),
+                    activation=GELUActivation(),
                 ),
                 d_model=config.hidden_size,
             )
             l.output = torch.nn.Identity()
     return timesformer
+
+
+def vivit_to_switch(vivit: VivitForVideoClassification, layers_for_switch: list[int], n_experts, config: VivitConfig):
+    # first - replace layers
+    for i, l in enumerate(vivit.vivit.encoder.layer):
+        if i in layers_for_switch:
+            l.intermediate = SwitchFeedForward(
+                is_scale_prob=True,
+                n_experts=n_experts,
+                expert=FeedForward(
+                    d_model=config.hidden_size,
+                    d_ff=config.intermediate_size,
+                    dropout=0,
+                    activation=FastGELUActivation(),
+                ),
+                d_model=config.hidden_size,
+            )
+            l.output = torch.nn.Identity()
+    return vivit
 
 
 def collect_route_stats(timesformer: TimesformerForVideoClassification, layers_for_switch: list[int]):

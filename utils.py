@@ -8,18 +8,22 @@ def save_run(model, optimizer, run_name, epoch):
         os.mkdir("./checkpoints")
     except:
         pass
+    try:
+        os.mkdir(f"./checkpoints/{run_name}")
+    except:
+        pass
     torch.save(
         {
             "epoch": epoch,
             "model_state_dict": model.state_dict(),
             "optimizer_state_dict": optimizer.state_dict(),
         },
-        f"./checkpoints/{run_name}_epoch_{epoch}.pt",
+        f"./checkpoints/{run_name}/{run_name}_epoch_{epoch}.pt",
     )
 
 
-def load_run(model, optimizer, run_name):
-    checkpoint = torch.load(f"./checkpoints/{run_name}.pt")
+def load_run(model, optimizer, run_name, epoch):
+    checkpoint = torch.load(f"./checkpoints/{run_name}/{run_name}_epoch_{epoch}.pt")
     model.load_state_dict(checkpoint["model_state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     return model, optimizer, checkpoint["epoch"]
