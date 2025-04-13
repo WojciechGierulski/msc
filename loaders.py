@@ -21,7 +21,7 @@ def get_loaders(dataset_train, dataset_valid, dataset_test, SEED, batch_size, n_
         training_loader = DataLoader(
             dataset=dataset_train,
             batch_size=batch_size,
-            shuffle=False,
+            shuffle=True,
             num_workers=n_workers,
             worker_init_fn=seed_worker,
             generator=gtr,
@@ -46,7 +46,7 @@ def get_loaders(dataset_train, dataset_valid, dataset_test, SEED, batch_size, n_
         training_loader = DataLoader(
             dataset=dataset_train,
             batch_size=batch_size,
-            shuffle=False,
+            shuffle=True,
         )
         validation_loader = DataLoader(
             dataset=dataset_valid,
