@@ -8,7 +8,7 @@ def check_model_name(model):
         raise ValueError(f"Unknown model: {model}")
 
 
-def get_model(model: str, num_labels, vit_config):
+def get_model(model: str, num_labels, vit_config, config):
     check_model_name(model)
     if model == "timesformer":
         config = TimesformerConfig(num_frames=config["frames"], **vit_config, num_labels=num_labels)

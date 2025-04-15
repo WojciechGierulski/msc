@@ -7,7 +7,7 @@ def init_timesformer(timesformer, vit, n_layers, switch, switch_layers):
             vit.vit.embeddings.patch_embeddings.projection.state_dict()
         )
         timesformer.timesformer.embeddings.position_embeddings.copy_(vit.vit.embeddings.position_embeddings)
-        torch.nn.init.uniform(timesformer.timesformer.embeddings.time_embeddings)
+        #torch.nn.init.uniform(timesformer.timesformer.embeddings.time_embeddings)
         for i in range(n_layers):
             vit_qkv_weight = torch.cat(
                 [
@@ -56,9 +56,9 @@ def init_timesformer(timesformer, vit, n_layers, switch, switch_layers):
             timesformer.timesformer.encoder.layer[i].temporal_attention.output.dense.load_state_dict(
                 vit.vit.encoder.layer[i].attention.output.dense.state_dict()
             )
-            timesformer.timesformer.encoder.layer[i].temporal_dense.load_state_dict(
-                vit.vit.encoder.layer[i].attention.output.dense.state_dict()
-            )
+            # timesformer.timesformer.encoder.layer[i].temporal_dense.load_state_dict(
+            #     vit.vit.encoder.layer[i].attention.output.dense.state_dict()
+            # )
         timesformer.timesformer.layernorm.load_state_dict(vit.vit.layernorm.state_dict())
     return timesformer
 

@@ -34,9 +34,9 @@ CONFIG = {
     "mixup_alpha": 0.0,
     "dataset": "ucf101",
     "subsample": None,
-    "switch": False,
+    "switch": True,
     "switch_layers": [0, 1],
-    "n_experts": -1,
+    "n_experts": 4,
     "load_balance_alpha": 0.01,
     "model": "timesformer",
 }
@@ -49,26 +49,26 @@ def main_func(config):
     np.random.seed(SEED)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    wandb.login(key="25a61b596081a070a75d3cfc16bfad96632650fc")
+    # wandb.login(key="25a61b596081a070a75d3cfc16bfad96632650fc")
 
-    wandb.init(project="msc", config=config)
+    # wandb.init(project="msc", config=config)
 
-    wandb.define_metric("epoch_nr")
-    wandb.define_metric("train_accuracy_step_top1")
-    wandb.define_metric("train_accuracy_step_top5")
-    wandb.define_metric("train_accuracy_epoch_top1", step_metric="epoch_nr")
-    wandb.define_metric("train_accuracy_epoch_top5", step_metric="epoch_nr")
-    wandb.define_metric("valid_accuracy_epoch_top1", step_metric="epoch_nr")
-    wandb.define_metric("valid_accuracy_epoch_top5", step_metric="epoch_nr")
-    wandb.define_metric("test_accuracy_epoch_top1", step_metric="epoch_nr")
-    wandb.define_metric("test_accuracy_epoch_top5", step_metric="epoch_nr")
-    wandb.define_metric("valid_loss_epoch", step_metric="epoch_nr")
-    wandb.define_metric("train_loss_step")
-    wandb.define_metric("train_loss_epoch", step_metric="epoch_nr")
-    wandb.define_metric("train_load_balancing_loss_step")
-    wandb.define_metric("train_classification_loss_step")
-    wandb.define_metric("train_load_balancing_loss_epoch", step_metric="epoch_nr")
-    wandb.define_metric("train_classification_loss_epoch", step_metric="epoch_nr")
+    # wandb.define_metric("epoch_nr")
+    # wandb.define_metric("train_accuracy_step_top1")
+    # wandb.define_metric("train_accuracy_step_top5")
+    # wandb.define_metric("train_accuracy_epoch_top1", step_metric="epoch_nr")
+    # wandb.define_metric("train_accuracy_epoch_top5", step_metric="epoch_nr")
+    # wandb.define_metric("valid_accuracy_epoch_top1", step_metric="epoch_nr")
+    # wandb.define_metric("valid_accuracy_epoch_top5", step_metric="epoch_nr")
+    # wandb.define_metric("test_accuracy_epoch_top1", step_metric="epoch_nr")
+    # wandb.define_metric("test_accuracy_epoch_top5", step_metric="epoch_nr")
+    # wandb.define_metric("valid_loss_epoch", step_metric="epoch_nr")
+    # wandb.define_metric("train_loss_step")
+    # wandb.define_metric("train_loss_epoch", step_metric="epoch_nr")
+    # wandb.define_metric("train_load_balancing_loss_step")
+    # wandb.define_metric("train_classification_loss_step")
+    # wandb.define_metric("train_load_balancing_loss_epoch", step_metric="epoch_nr")
+    # wandb.define_metric("train_classification_loss_epoch", step_metric="epoch_nr")
 
     CLASSES_LIST = get_classes(config["dataset"])
 
@@ -88,7 +88,7 @@ def main_func(config):
 
     vit = ViTForImageClassification.from_pretrained(f"WinKawaks/vit-{config['vit_base_size']}-patch16-224")
 
-    model, model_config = get_model(config["model"], num_labels, VIT_CONFIG)
+    model, model_config = get_model(config["model"], num_labels, VIT_CONFIG, config)
 
     if config["switch"]:
         model = model_to_switch(config["model"], model, config, model_config)
