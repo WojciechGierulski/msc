@@ -96,9 +96,7 @@ def main_func(config):
     model.to(device)
 
     if config["init_vit"]:
-        model = init_model(
-            config["model"], model, vit, VIT_CONFIG["num_hidden_layers"], config["switch"], config["switch_layers"]
-        )
+        model = init_model(config["model"], model, vit, VIT_CONFIG["num_hidden_layers"], config)
 
     training_loader, validation_loader, test_loader = get_loaders(
         dataset_train, dataset_valid, dataset_test, SEED, config["batch_size"], n_workers=12

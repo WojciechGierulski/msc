@@ -34,3 +34,4 @@ def model_to_switch(model_name: str, model, config, model_config):
         model = timesformer_to_switch(model, config["switch_layers"], config["n_experts"], model_config)
     if model_name == "vivit":
         model = vivit_to_switch(model, config["switch_layers"], config["n_experts"], model_config)
+    return model
