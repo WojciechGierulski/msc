@@ -20,7 +20,9 @@ def train_epoch(
     total_batches = 0
     total_epoch_correct_train = 0
     total_epoch_correct_top5_train = 0
-    for i, data in enumerate(tqdm.tqdm(training_loader)):
+    processed_videos = set()
+    pbar = tqdm.tqdm(total=training_loader.dataset.num_videos)
+    for data in training_loader:
         images = data["video"]
         labels = data["label"]
 
@@ -78,6 +80,9 @@ def train_epoch(
                 "train_classification_loss_step": loss_train_classification.item(),
             }
         )
+        [processed_videos.add(el.item()) for el in data["video_index"]]
+        pbar.n = len(processed_videos)
+        pbar.refresh()
         break
 
     wandb.log(
@@ -100,8 +105,10 @@ def val_epoch(model, validation_loader, device, loss, wandb):
     total_correct = 0
     total_correct_top5 = 0
     total_samples = 0
+    processed_videos = set()
     with torch.no_grad():
-        for i, data in enumerate(tqdm.tqdm(validation_loader)):
+        pbar = tqdm.tqdm(total=validation_loader.dataset.num_videos)
+        for data in validation_loader:
             images = data["video"]
             labels = data["label"]
             images = images.to(device)
@@ -118,6 +125,9 @@ def val_epoch(model, validation_loader, device, loss, wandb):
             total_correct += corrects[0]
             total_correct_top5 += corrects[1]
             total_samples += len(images)
+            [processed_videos.add(el.item()) for el in data["video_index"]]
+            pbar.n = len(processed_videos)
+            pbar.refresh()
 
     wandb.log(
         {
@@ -134,8 +144,10 @@ def test(model, test_loader, device, wandb):
     total_correct = 0
     total_correct_top5 = 0
     total_samples = 0
+    processed_videos = set()
     with torch.no_grad():
-        for i, data in enumerate(tqdm.tqdm(test_loader)):
+        pbar = tqdm.tqdm(total=test_loader.dataset.num_videos)
+        for data in test_loader:
             images = data["video"]
             labels = data["label"]
             batch, clips_per_vid, frames, ch, w, h = images.shape
@@ -152,6 +164,9 @@ def test(model, test_loader, device, wandb):
             total_correct += corrects[0]
             total_correct_top5 += corrects[1]
             total_samples += len(labels)
+            [processed_videos.add(el.item()) for el in data["video_index"]]
+            pbar.n = len(processed_videos)
+            pbar.refresh()
 
     wandb.log(
         {
