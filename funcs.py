@@ -1,6 +1,5 @@
 import tqdm
 import torch
-from utils import save_run
 from metrics import accuracy
 from utils import show_img_chw
 from torch.nn.functional import softmax
@@ -83,7 +82,6 @@ def train_epoch(
         [processed_videos.add(el.item()) for el in data["video_index"]]
         pbar.n = len(processed_videos)
         pbar.refresh()
-        break
 
     wandb.log(
         {
@@ -95,7 +93,6 @@ def train_epoch(
             "epoch_nr": epoch,
         }
     )
-    save_run(model, optimizer, wandb.run.name, epoch)
 
 
 def val_epoch(model, validation_loader, device, loss, wandb):

@@ -3,7 +3,7 @@ from datasets import get_dataset
 import torch
 import random
 import numpy as np
-from utils import load_run, show_img_chw
+from utils import load_run, show_img_chw, save_run
 from funcs import train_epoch, val_epoch, test
 from models.vivit_custom.utils.scheduler import WarmupCosineSchedule
 from transforms import get_transforms
@@ -35,9 +35,9 @@ CONFIG = {
     "dataset": "ucf101",
     "subsample": None,
     "switch": False,
-    "switch_layers": [0, 1],
-    "n_experts": 4,
-    "load_balance_alpha": 0.01,
+    "switch_layers": [1, 3, 5, 7, 9, 11],
+    "n_experts": 3,
+    "load_balance_alpha": 10,
     "model": "timesformer",
     "clip_duration": 2,
 }
@@ -156,6 +156,7 @@ def main_func(config):
             if acc > max_val_acc:
                 max_val_acc = acc
                 max_val_epoch = epoch
+                save_run(model, optimizer, wandb.run.name, epoch)
 
     print(f"Running test for model {wandb.run.name}, Epoch: {max_val_epoch}, Max acc: {max_val_acc}")
     model, _, _ = load_run(model, optimizer, wandb.run.name, max_val_epoch)

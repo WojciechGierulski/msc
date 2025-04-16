@@ -35,7 +35,6 @@ class SplitTo3(object):
         if frames < clip_frames:
             repeated = a[-1].unsqueeze(0).repeat((clip_frames - frames, 1, 1, 1))
             a = torch.cat((a, repeated), dim=0)
-            a = a.unsqueeze(0)
 
         frames = a.shape[0]
         mid_frame = frames // 2
