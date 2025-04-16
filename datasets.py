@@ -32,14 +32,6 @@ class CustomHMDB51(HMDB51):
         return video, class_index
 
 
-def load_lazy(dataset):
-    with open(f"cache/dataset_train_{dataset}.pickle", "rb") as file:
-        dataset_train = pickle.load(file)
-    with open(f"cache/dataset_valid_{dataset}.pickle", "rb") as file:
-        dataset_valid = pickle.load(file)
-    return dataset_train, dataset_valid
-
-
 def stratify_dataset(sample_size: float, dataset):
     video_idxs = [dataset.video_clips.get_clip_location(item_idx)[0] for item_idx in range(len(dataset))]
     classes = [dataset.samples[dataset.indices[video_idx]][1] for video_idx in video_idxs]
@@ -48,99 +40,63 @@ def stratify_dataset(sample_size: float, dataset):
     return sample
 
 
-def get_dataset(
-    dataset: str, ds_transform_train, ds_transform_valid, test_transform, lazy=True, subsample=None, num_workers=5
-):
+def get_dataset(dataset: str, ds_transform_train, ds_transform_valid, ds_transform_test, seconds=2, subsample=None):
     if dataset not in ["hmdb51", "ucf101"]:
         raise ValueError(f"Wrong dataset {dataset}")
     if dataset == "hmdb51":
-        dataset_test = Hmdb51(
+        dataset_train = Hmdb51(
             data_path=r"datasets/hmdb/test_train_splits/testTrainMulti_7030_splits",
-            clip_sampler=UniformClipSampler(1000),  # sample whole clips
+            clip_sampler=UniformClipSampler(clip_duration=seconds, backpad_last=True),  # sample whole clips
+            decode_audio=False,
+            video_path_prefix="datasets/hmdb/data",
+            split_type="train",
+            transform=ds_transform_train,
+        )
+        dataset_valid = Hmdb51(
+            data_path=r"datasets/hmdb/test_train_splits/testTrainMulti_7030_splits",
+            clip_sampler=UniformClipSampler(clip_duration=seconds, backpad_last=True),  # sample whole clips
             decode_audio=False,
             video_path_prefix="datasets/hmdb/data",
             split_type="test",
-            transform=test_transform,
+            transform=ds_transform_valid,
         )
-        if lazy and all(
-            [
-                os.path.exists(f"cache/dataset_train_{dataset}.pickle"),
-                os.path.exists(f"cache/dataset_valid_{dataset}.pickle"),
-            ]
-        ):
-            dataset_train, dataset_valid = load_lazy(dataset)
-        else:
-            dataset_train = CustomHMDB51(
-                root="datasets/hmdb/data",
-                annotation_path="datasets/hmdb/test_train_splits/testTrainMulti_7030_splits",
-                frames_per_clip=64,
-                step_between_clips=64,
-                num_workers=num_workers,
-                transform=ds_transform_train,
-                train=True,
-                output_format="TCHW",
-            )
-            dataset_valid = CustomHMDB51(
-                root="datasets/hmdb/data",
-                annotation_path="datasets/hmdb/test_train_splits/testTrainMulti_7030_splits",
-                frames_per_clip=64,
-                step_between_clips=64,
-                num_workers=num_workers,
-                transform=ds_transform_valid,
-                train=False,
-                output_format="TCHW",
-            )
+        dataset_test = Hmdb51(
+            data_path=r"datasets/hmdb/test_train_splits/testTrainMulti_7030_splits",
+            clip_sampler=UniformClipSampler(clip_duration=10_000, backpad_last=True),  # sample whole clips
+            decode_audio=False,
+            video_path_prefix="datasets/hmdb/data",
+            split_type="test",
+            transform=ds_transform_test,
+        )
+
     elif dataset == "ucf101":
-        dataset_test = Ucf101(
-            data_path=r"datasets/ucf101/test_train_splits/ucfTrainTestlist/testlist01.txt",
-            clip_sampler=UniformClipSampler(1000),  # sample whole clips
+        dataset_train = Ucf101(
+            data_path=r"datasets/ucf101/test_train_splits/ucfTrainTestlist/trainlist01.txt",
+            clip_sampler=UniformClipSampler(clip_duration=seconds, backpad_last=True),  # sample whole clips
             decode_audio=False,
             video_path_prefix="datasets/ucf101/data/UCF-101",
-            transform=test_transform,
+            transform=ds_transform_train,
         )
-        if lazy and all(
-            [
-                os.path.exists(f"cache/dataset_train_{dataset}.pickle"),
-                os.path.exists(f"cache/dataset_valid_{dataset}.pickle"),
-            ]
-        ):
-            dataset_train, dataset_valid = load_lazy(dataset)
-        else:
-            dataset_train = CustomUCF101(
-                root="datasets/ucf101/data/UCF-101",
-                annotation_path="datasets/ucf101/test_train_splits/ucfTrainTestlist",
-                frames_per_clip=64,
-                step_between_clips=64,
-                num_workers=num_workers,
-                transform=ds_transform_train,
-                train=True,
-                output_format="TCHW",
-            )
-            dataset_valid = CustomUCF101(
-                root="datasets/ucf101/data/UCF-101",
-                annotation_path="datasets/ucf101/test_train_splits/ucfTrainTestlist",
-                frames_per_clip=64,
-                step_between_clips=64,
-                num_workers=num_workers,
-                transform=ds_transform_valid,
-                train=False,
-                output_format="TCHW",
-            )
-    with open(f"cache/dataset_train_{dataset}.pickle", "wb") as file:
-        pickle.dump(dataset_train, file)
-    with open(f"cache/dataset_valid_{dataset}.pickle", "wb") as file:
-        pickle.dump(dataset_valid, file)
+        dataset_valid = Ucf101(
+            data_path=r"datasets/ucf101/test_train_splits/ucfTrainTestlist/testlist01.txt",
+            clip_sampler=UniformClipSampler(clip_duration=seconds),  # sample whole clips
+            decode_audio=False,
+            video_path_prefix="datasets/ucf101/data/UCF-101",
+            transform=ds_transform_valid,
+        )
+        dataset_test = Ucf101(
+            data_path=r"datasets/ucf101/test_train_splits/ucfTrainTestlist/testlist01.txt",
+            clip_sampler=UniformClipSampler(clip_duration=10000),  # sample whole clips
+            decode_audio=False,
+            video_path_prefix="datasets/ucf101/data/UCF-101",
+            transform=ds_transform_test,
+        )
+    else:
+        pass
+
     if dataset == "ucf101":
         num_labels = 101
     elif dataset == "hmdb51":
         num_labels = 51
-
-    dataset_train.transform = ds_transform_train
-    dataset_valid.transform = ds_transform_valid
-    dataset_test._transform = test_transform
-
-    if subsample:
-        dataset_train = stratify_dataset(subsample, dataset_train)
-        dataset_valid = stratify_dataset(subsample, dataset_valid)
 
     return dataset_train, dataset_valid, dataset_test, num_labels

@@ -7,10 +7,10 @@ from constants import UCF101_CLASSES
 if not os.path.exists("datasets"):
     os.mkdir("datasets")
 
-id = '1l7Cg41Ojus8t1U85wU9ws4T3PTNou-OQ'
-output = 'datasets/data.rar'
+id = "1N4NrtCDtsLqIWzehvy5rCfkYrkIwq03h"
+output = "datasets/data.rar"
 gdown.download(id=id, output=output)
-patoolib.extract_archive("datasets/data.rar", outdir="datasets/")
+# patoolib.extract_archive("datasets/data.rar", outdir="datasets/")
 
 
 ## add classes to test splits
@@ -23,7 +23,7 @@ patoolib.extract_archive("datasets/data.rar", outdir="datasets/")
 #     for line in lines:
 #         line = line.strip()
 #         class_name = line.split("/")[0]
-#         class_idx = UCF101_CLASSES.index(class_name)
+#         class_idx = UCF101_CLASSES.index(class_name) + 1
 #         new_line = f"{line} {class_idx}\n"
 #         new_lines.append(new_line)
 #     with open(filepath, "w") as file:

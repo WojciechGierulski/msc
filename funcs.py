@@ -17,10 +17,13 @@ def train_epoch(
     curr_epoch_losses_classification_train = []
     curr_epoch_losses_load_balance_train = []
     total_epoch_samples = 0
+    total_batches = 0
     total_epoch_correct_train = 0
     total_epoch_correct_top5_train = 0
     for i, data in enumerate(tqdm.tqdm(training_loader)):
-        images, labels = data
+        images = data["video"]
+        labels = data["label"]
+
         images = images.to(device)
         labels = labels.to(device)
 
@@ -58,6 +61,7 @@ def train_epoch(
             clear_memory(model, config["switch_layers"])
 
         # logging
+        total_batches += 1
         total_epoch_samples += len(images)
         corrects = accuracy(outputs, labels, topk=(1, 5))
         total_epoch_correct_train += corrects[0]
@@ -74,14 +78,15 @@ def train_epoch(
                 "train_classification_loss_step": loss_train_classification.item(),
             }
         )
+        break
 
     wandb.log(
         {
             "train_accuracy_epoch_top1": total_epoch_correct_train / total_epoch_samples,
             "train_accuracy_epoch_top5": total_epoch_correct_top5_train / total_epoch_samples,
-            "train_loss_epoch": sum(curr_epoch_losses_train) / len(training_loader),
-            "train_load_balancing_loss_epoch": sum(curr_epoch_losses_load_balance_train) / len(training_loader),
-            "train_classification_loss_epoch": sum(curr_epoch_losses_classification_train) / len(training_loader),
+            "train_loss_epoch": sum(curr_epoch_losses_train) / total_batches,
+            "train_load_balancing_loss_epoch": sum(curr_epoch_losses_load_balance_train) / total_batches,
+            "train_classification_loss_epoch": sum(curr_epoch_losses_classification_train) / total_batches,
             "epoch_nr": epoch,
         }
     )
@@ -97,7 +102,8 @@ def val_epoch(model, validation_loader, device, loss, wandb):
     total_samples = 0
     with torch.no_grad():
         for i, data in enumerate(tqdm.tqdm(validation_loader)):
-            images, labels = data
+            images = data["video"]
+            labels = data["label"]
             images = images.to(device)
             labels = labels.to(device)
 
@@ -120,28 +126,32 @@ def val_epoch(model, validation_loader, device, loss, wandb):
             "valid_loss_epoch": total_loss / total_batches,
         }
     )
+    return total_correct / total_samples
 
 
-def test_epoch(model, test_loader, device, wandb):
+def test(model, test_loader, device, wandb):
     model.eval()
     total_correct = 0
     total_correct_top5 = 0
     total_samples = 0
     with torch.no_grad():
         for i, data in enumerate(tqdm.tqdm(test_loader)):
-            images = data["video"].squeeze(dim=0).to(device)
-            label = data["label"].to(device)
+            images = data["video"]
+            labels = data["label"]
+            batch, clips_per_vid, frames, ch, w, h = images.shape
+            images = images.reshape((batch * clips_per_vid, frames, ch, w, h))
+            images = images.to(device)
+            labels = labels.to(device)
 
             outputs = model(images).logits
-            outputs = softmax(outputs)
-            outputs = torch.sum(outputs, 0) / outputs.shape[0]
+            classes = outputs.shape[-1]
+            outputs = outputs.reshape((batch, clips_per_vid, classes)).mean(axis=1)
 
-            outputs = outputs.unsqueeze(dim=0)
-            label = label.unsqueeze(dim=0)
-            corrects = accuracy(outputs, label, topk=(1, 5))
+            # logging
+            corrects = accuracy(outputs, labels, topk=(1, 5))
             total_correct += corrects[0]
             total_correct_top5 += corrects[1]
-            total_samples += 1
+            total_samples += len(labels)
 
     wandb.log(
         {
