@@ -28,7 +28,7 @@ def train_epoch(
         images = images.to(device)
         labels = labels.to(device)
 
-        if config["mixup"] and len(labels.unique() > 1):
+        if config["mixup"] and len(labels.unique()) > 1:
             images, labels_mixed_up = mixup(images.permute((0, 2, 1, 3, 4)), labels)
             images = images.permute((0, 2, 1, 3, 4))
             outputs = model(images).logits
