@@ -33,6 +33,7 @@ def train_epoch(
             images = images.permute((0, 2, 1, 3, 4))
             outputs = model(images).logits
             loss_train_classification = loss(outputs, labels_mixed_up)
+            labels = labels_mixed_up.argmax(axis=1)
         else:
             outputs = model(images).logits
             loss_train_classification = loss(outputs, labels, label_smoothing=label_smoothing)
