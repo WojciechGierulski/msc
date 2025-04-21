@@ -134,7 +134,7 @@ def main_func(config):
     else:
         prev_epoch = 0
 
-    for epoch in range(1 + prev_epoch, 1 + prev_epoch + epochs):
+    for epoch in range(1 + prev_epoch, 1 + epochs):
         max_val_acc = 0
         max_val_epoch = 0
         train_epoch(

@@ -92,7 +92,7 @@ def main_func_resume(run_id, epoch_nr_to_load):
 
     model, optimizer, prev_epoch = load_run(model, optimizer, run_model_name, epoch_nr_to_load)
 
-    for epoch in range(1 + prev_epoch, 1 + prev_epoch + epochs):
+    for epoch in range(1 + prev_epoch, 1 + epochs):
         max_val_acc = 0
         max_val_epoch = 0
         train_epoch(
