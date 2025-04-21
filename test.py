@@ -25,8 +25,7 @@ def main_func(LOAD_PARAMS):
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     wandb.login(key="25a61b596081a070a75d3cfc16bfad96632650fc")
-    wandb.init(id=LOAD_PARAMS["run_id"], project="msc", resume="allow")
-    run_name = wandb.run.name
+    wandb.init(id=LOAD_PARAMS["run_id"], project="msc", resume=True)
     config = wandb.config
 
     VIT_CONFIG = get_vit_config(config["vit_base_size"])
