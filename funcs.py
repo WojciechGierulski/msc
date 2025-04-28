@@ -39,10 +39,7 @@ def train_epoch(
             loss_train_classification = loss(outputs, labels, label_smoothing=label_smoothing)
 
         if config["switch"]:
-            counts, route_prob, route_prob_max = collect_route_stats(model, config["switch_layers"])
-            total = counts.sum(dim=-1, keepdims=True)
-            route_frac = counts / total
-            route_prob = route_prob / total
+            route_frac, route_prob = collect_route_stats(model, config["switch_layers"])
             load_balancing_loss = config["load_balance_alpha"] * config["n_experts"] * (route_frac * route_prob).sum()
         else:
             load_balancing_loss = torch.tensor(0).to(device)
@@ -134,7 +131,7 @@ def val_epoch(model, validation_loader, device, loss, wandb):
             "valid_loss_epoch": total_loss / total_batches,
         }
     )
-    return total_correct / total_samples
+    return (total_correct / total_samples).item()
 
 
 def test(model, test_loader, device, wandb):

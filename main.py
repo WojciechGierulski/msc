@@ -17,16 +17,16 @@ from models.models_functions import get_model, init_model, model_to_switch
 
 
 CONFIG = {
-    "base_learning_rate": 0.0005,
+    "base_learning_rate": 5,
     "label_smoothing": 0.2,
     "epochs": 10,
     "frames": 8,
     "val_epochs": 1,
-    "batch_size": 24,
+    "batch_size": 2,
     "weight_decay": 0,
     "load_run": False,
     "init_vit": True,
-    "vit_base_size": "small",
+    "vit_base_size": "tiny",
     "cosine_schedule": False,
     "augmentations": True,
     "advanced_augmentations": True,
@@ -34,12 +34,14 @@ CONFIG = {
     "mixup_alpha": 0.2,
     "dataset": "hmdb51",
     "subsample": None,
-    "switch": False,
-    "switch_layers": [1, 3, 5, 7, 9, 11],
-    "n_experts": 3,
+    "switch": True,
+    "switch_layers": [0, 1],
+    "n_experts": 2,
+    "switch_top_k": 1,
     "load_balance_alpha": 10,
     "model": "timesformer",
     "clip_duration": 2,
+    "test_run": True
 }
 
 

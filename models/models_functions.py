@@ -31,7 +31,9 @@ def init_model(model_name: str, model, vit, n_layers, config):
 def model_to_switch(model_name: str, model, config, model_config):
     check_model_name(model_name)
     if model_name == "timesformer":
-        model = timesformer_to_switch(model, config["switch_layers"], config["n_experts"], model_config)
+        model = timesformer_to_switch(
+            model, config["switch_layers"], config["n_experts"], model_config, config["switch_top_k"]
+        )
     if model_name == "vivit":
         model = vivit_to_switch(model, config["switch_layers"], config["n_experts"], model_config)
     return model

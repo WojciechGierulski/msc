@@ -8,6 +8,7 @@ from funcs import train_epoch, val_epoch, test
 from models.vivit_custom.utils.scheduler import WarmupCosineSchedule
 from transforms import get_transforms
 
+from models.switch.utils import set_activate_n_expert
 from constants import get_classes
 from vit_configs import get_vit_config
 from loaders import get_loaders
@@ -17,6 +18,7 @@ from models.models_functions import get_model, init_model, model_to_switch
 
 RUN_ID = ""
 EPOCH_NR = 1
+ACTIVATE_ONLY_N_EXPERT = 0
 
 
 def main_func_resume(run_id, epoch_nr_to_load):
@@ -30,6 +32,8 @@ def main_func_resume(run_id, epoch_nr_to_load):
     wandb.login(key="25a61b596081a070a75d3cfc16bfad96632650fc")
     wandb.init(project="msc", resume=True, id=run_id)
     config = wandb.config
+    if "switch_top_k" not in config:
+        config["switch_top_k"] = 1
     run_model_name = wandb.run.name
 
     CLASSES_LIST = get_classes(config["dataset"])
@@ -91,6 +95,10 @@ def main_func_resume(run_id, epoch_nr_to_load):
         mixup = None
 
     model, optimizer, prev_epoch = load_run(model, optimizer, run_model_name, epoch_nr_to_load)
+
+    if ACTIVATE_ONLY_N_EXPERT and config["switch"]:
+        model = set_activate_n_expert(model, ACTIVATE_ONLY_N_EXPERT, config["switch_layers"])
+
     test(model, test_loader, device, wandb)
 
 
