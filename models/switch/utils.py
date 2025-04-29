@@ -75,3 +75,10 @@ def set_activate_n_expert(model: TimesformerForVideoClassification, activate_n_e
         if i in switch_layers:
             model.timesformer.encoder.layer[i].intermediate.activate_only_n_expert = activate_n_expert
     return model
+
+
+def set_save_token_routes(model, config, save_token_routes):
+    for i, layer in enumerate(model.timesformer.encoder.layer):
+        if i in config["switch_layers"]:
+            model.timesformer.encoder.layer[i].intermediate.save_token_routes = save_token_routes
+    return model

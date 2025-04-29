@@ -30,6 +30,11 @@ def load_run(model, optimizer, run_name, epoch):
 
 
 def show_img_chw(img, denormalize=False):
+    img = get_image_chw(img, denormalize)
+    plt.imshow(img)
+
+
+def get_image_chw(img, denormalize=False):
     # Scaling factors for each channel
     if denormalize:
         means = torch.tensor([0.485, 0.456, 0.406]).view(-1, 1, 1)
@@ -37,4 +42,4 @@ def show_img_chw(img, denormalize=False):
         img = img * stds
         img = img + means
     img = img.permute(1, 2, 0)
-    plt.imshow(img)
+    return img

@@ -20,7 +20,8 @@ class SwitchFeedForward(Module):
         expert: FeedForward,
         d_model: int,
         top_k: int = 2,
-        activate_only_n_expert=None
+        activate_only_n_expert=None,
+        save_token_routes=False
     ):
         """
         * `is_scale_prob` specifies whether to multiply the input to the FFN by the routing probability
@@ -45,6 +46,9 @@ class SwitchFeedForward(Module):
 
         self.activate_only_n_expert = activate_only_n_expert
 
+        self.save_token_routes = save_token_routes
+        self.token_routes = None
+
     def forward(self, x: torch.Tensor):
         """
         * `x` is the input to the switching module with shape `[seq_len, batch_size, d_model]`
@@ -56,6 +60,8 @@ class SwitchFeedForward(Module):
             route_prob = self.softmax(self.switch(x))
 
             route_prob_max, routes = torch.max(route_prob, dim=-1)
+            if self.save_token_routes:
+                self.token_routes = routes
 
             if self.activate_only_n_expert is not None:
                 # only for debug when testing
