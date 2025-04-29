@@ -3,7 +3,7 @@ import torch
 from metrics import accuracy
 from utils import show_img_chw
 from torch.nn.functional import softmax
-from models.switch.utils import collect_route_stats, clear_memory
+from models.switch.utils import collect_loss, clear_memory
 
 
 def train_epoch(
@@ -39,8 +39,8 @@ def train_epoch(
             loss_train_classification = loss(outputs, labels, label_smoothing=label_smoothing)
 
         if config["switch"]:
-            route_frac, route_prob = collect_route_stats(model, config["switch_layers"])
-            load_balancing_loss = config["load_balance_alpha"] * config["n_experts"] * (route_frac * route_prob).sum()
+            load_balancing_loss = collect_loss(model, config["switch_layers"])
+            load_balancing_loss = config["load_balance_alpha"] * config["n_experts"] * load_balancing_loss
         else:
             load_balancing_loss = torch.tensor(0).to(device)
 

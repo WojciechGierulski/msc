@@ -51,16 +51,18 @@ def vivit_to_switch(vivit: VivitForVideoClassification, layers_for_switch: list[
     return vivit
 
 
-def collect_route_stats(timesformer: TimesformerForVideoClassification, layers_for_switch: list[int]):
-    fs = []
-    ps = []
+def collect_loss(timesformer: TimesformerForVideoClassification, layers_for_switch: list[int]):
+    first_term = True
     for i, l in enumerate(timesformer.timesformer.encoder.layer):
         if i in layers_for_switch:
             f = l.intermediate.route_frac
             p = l.intermediate.route_prob
-            fs.append(f)
-            ps.append(p)
-    return torch.stack(fs), torch.stack(ps)
+            if first_term:
+                balance_loss = (f * p).sum()
+                first_term = False
+            else:
+                balance_loss += (f * p).sum()
+    return balance_loss
 
 
 def clear_memory(timesformer: TimesformerForVideoClassification, layers_for_switch: list[int]):
