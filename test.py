@@ -16,7 +16,7 @@ from transformers import ViTForImageClassification
 from pytorchvideo.transforms import MixUp
 from models.models_functions import get_model, init_model, model_to_switch
 
-RUN_ID = ""
+RUN_ID = "qwectpiy"
 EPOCH_NR = 1
 ACTIVATE_ONLY_N_EXPERT = 0
 
@@ -61,7 +61,7 @@ def main_func_resume(run_id, epoch_nr_to_load):
     model.to(device)
 
     if config["init_vit"]:
-        model = init_model(config["model"], model, vit, VIT_CONFIG["num_hidden_layers"], config)
+        model = init_model(config["model"], model, vit, model_config.num_hidden_layers, config)
 
     training_loader, validation_loader, test_loader = get_loaders(
         dataset_train, dataset_valid, dataset_test, SEED, config["batch_size"], n_workers=1
@@ -96,7 +96,7 @@ def main_func_resume(run_id, epoch_nr_to_load):
 
     model, optimizer, prev_epoch = load_run(model, optimizer, run_model_name, epoch_nr_to_load)
 
-    if ACTIVATE_ONLY_N_EXPERT and config["switch"]:
+    if ACTIVATE_ONLY_N_EXPERT is not None and config["switch"]:
         model = set_activate_n_expert(model, ACTIVATE_ONLY_N_EXPERT, config["switch_layers"])
 
     test(model, test_loader, device, wandb)

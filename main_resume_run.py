@@ -57,7 +57,7 @@ def main_func_resume(run_id, epoch_nr_to_load):
     model.to(device)
 
     if config["init_vit"]:
-        model = init_model(config["model"], model, vit, VIT_CONFIG["num_hidden_layers"], config)
+        model = init_model(config["model"], model, vit, model_config.num_hidden_layers, config)
 
     training_loader, validation_loader, test_loader = get_loaders(
         dataset_train, dataset_valid, dataset_test, SEED, config["batch_size"], n_workers=1

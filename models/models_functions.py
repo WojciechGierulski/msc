@@ -1,6 +1,7 @@
 from transformers import TimesformerForVideoClassification, TimesformerConfig, VivitForVideoClassification, VivitConfig
 from weight_inits import init_timesformer, init_vivit
 from models.switch.utils import timesformer_to_switch, vivit_to_switch
+import copy
 
 
 def check_model_name(model):
@@ -9,6 +10,9 @@ def check_model_name(model):
 
 
 def get_model(model: str, num_labels, vit_config, config):
+    if config["cut_layers"]:
+        vit_config = copy.deepcopy(vit_config)
+        vit_config["num_hidden_layers"] = vit_config["num_hidden_layers"] - config["cut_layers"]
     check_model_name(model)
     if model == "timesformer":
         config = TimesformerConfig(num_frames=config["frames"], **vit_config, num_labels=num_labels)
