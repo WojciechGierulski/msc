@@ -10,7 +10,7 @@ def check_model_name(model):
 
 
 def get_model(model: str, num_labels, vit_config, config):
-    if config["cut_layers"]:
+    if config.get("cut_layers"):
         vit_config = copy.deepcopy(vit_config)
         vit_config["num_hidden_layers"] = vit_config["num_hidden_layers"] - config["cut_layers"]
     check_model_name(model)
