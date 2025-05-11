@@ -49,6 +49,10 @@ class SwitchFeedForward(Module):
         self.save_token_routes = save_token_routes
         self.token_routes = None
 
+        self.labels = None
+        self.route_tokens_to_labels = False
+        self.experts_classes = None
+
     def forward(self, x: torch.Tensor):
         """
         * `x` is the input to the switching module with shape `[seq_len, batch_size, d_model]`
@@ -67,6 +71,19 @@ class SwitchFeedForward(Module):
                 # only for debug when testing
                 routes = torch.zeros((routes.shape))
                 routes[:] = self.activate_only_n_expert
+            if self.route_tokens_to_labels:
+                class_to_expert_idx_map = {}
+                for expert_idx, classes_for_expert in enumerate(self.experts_classes):
+                    for cls_label in classes_for_expert:
+                        class_to_expert_idx_map[cls_label] = expert_idx
+                routes = torch.empty(batch_size * seq_len, device=x.device)
+                for i in range(batch_size):
+                    item_class = self.labels[i]
+                    assigned_expert_idx = class_to_expert_idx_map.get(item_class.item())
+                    start_token_idx = i * seq_len
+                    end_token_idx = (i + 1) * seq_len
+                    routes[start_token_idx:end_token_idx] = assigned_expert_idx
+
             indexes_list = [torch.eq(routes, i).nonzero(as_tuple=True)[0] for i in range(self.n_experts)]
 
             final_output = x.new_zeros(x.shape)

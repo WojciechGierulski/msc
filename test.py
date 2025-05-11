@@ -8,7 +8,7 @@ from funcs import train_epoch, val_epoch, test
 from models.vivit_custom.utils.scheduler import WarmupCosineSchedule
 from transforms import get_transforms
 
-from models.switch.utils import set_activate_n_expert
+from models.switch.utils import set_experts_param
 from constants import get_classes
 from vit_configs import get_vit_config
 from loaders import get_loaders
@@ -97,7 +97,7 @@ def main_func_resume(run_id, epoch_nr_to_load):
     model, optimizer, prev_epoch = load_run(model, optimizer, run_model_name, epoch_nr_to_load)
 
     if ACTIVATE_ONLY_N_EXPERT is not None and config["switch"]:
-        model = set_activate_n_expert(model, ACTIVATE_ONLY_N_EXPERT, config["switch_layers"])
+        model = set_experts_param(model, config["switch_layers"], "activate_only_n_expert", ACTIVATE_ONLY_N_EXPERT)
 
     test(model, test_loader, device, wandb)
 

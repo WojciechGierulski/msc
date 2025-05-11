@@ -3,11 +3,21 @@ import torch
 from metrics import accuracy
 from utils import show_img_chw
 from torch.nn.functional import softmax
-from models.switch.utils import collect_loss, clear_memory
+from models.switch.utils import collect_loss, clear_memory, set_experts_param
 
 
 def train_epoch(
-    model, device, training_loader, epoch, optimizer, loss, label_smoothing, mixup, scheduler, config, wandb
+    model,
+    device,
+    training_loader,
+    epoch,
+    optimizer,
+    loss,
+    label_smoothing,
+    mixup,
+    scheduler,
+    config,
+    wandb,
 ):
     optimizer.zero_grad()
     model.train()
@@ -31,14 +41,18 @@ def train_epoch(
         if config["mixup"] and len(labels.unique()) > 1:
             images, labels_mixed_up = mixup(images.permute((0, 2, 1, 3, 4)), labels)
             images = images.permute((0, 2, 1, 3, 4))
+            labels = labels_mixed_up.argmax(axis=1)
+            if config["switch"] and config["pretrain_experts_epochs"] and config.get("pretrain_experts_epochs") >= epoch:
+                model = set_experts_param(model, config["switch_layers"], "labels", labels)
             outputs = model(images).logits
             loss_train_classification = loss(outputs, labels_mixed_up)
-            labels = labels_mixed_up.argmax(axis=1)
         else:
+            if config["switch"] and config["pretrain_experts_epochs"] and config.get("pretrain_experts_epochs") >= epoch:
+                model = set_experts_param(model, config["switch_layers"], "labels", labels)
             outputs = model(images).logits
             loss_train_classification = loss(outputs, labels, label_smoothing=label_smoothing)
 
-        if config["switch"]:
+        if config["switch"] and config.get("pretrain_experts_epochs") < epoch:
             load_balancing_loss = collect_loss(model, config["switch_layers"])
             load_balancing_loss = config["load_balance_alpha"] * config["n_experts"] * load_balancing_loss
         else:

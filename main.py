@@ -3,9 +3,10 @@ from datasets import get_dataset
 import torch
 import random
 import numpy as np
-from utils import load_run, show_img_chw, save_run
+from utils import load_run, show_img_chw, save_run, get_experts_classes
 from funcs import train_epoch, val_epoch, test
 from models.vivit_custom.utils.scheduler import WarmupCosineSchedule
+from models.switch.utils import set_experts_param
 from transforms import get_transforms
 
 from constants import get_classes
@@ -22,7 +23,7 @@ CONFIG = {
     "epochs": 10,
     "frames": 8,
     "val_epochs": 1,
-    "batch_size": 2,
+    "batch_size": 25,
     "weight_decay": 0,
     "load_run": False,
     "init_vit": True,
@@ -32,17 +33,18 @@ CONFIG = {
     "advanced_augmentations": True,
     "mixup": True,
     "mixup_alpha": 0.2,
-    "dataset": "hmdb51",
+    "dataset": "ucf101",
     "subsample": None,
     "switch": True,
     "switch_layers": [0, 1],
-    "n_experts": 2,
+    "n_experts": 10,
     "switch_top_k": 1,
     "load_balance_alpha": 10,
     "model": "timesformer",
     "clip_duration": 2,
-    "cut_layers": 3,  # how many last layers to remove or False/None
-    "test_run": True
+    "cut_layers": 6,  # how many last layers to remove or False/None
+    "test_run": True,
+    "pretrain_experts_epochs": 2,
 }
 
 
@@ -53,9 +55,6 @@ def main_func(config):
     np.random.seed(SEED)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    wandb.login(key="25a61b596081a070a75d3cfc16bfad96632650fc")
-    wandb.init(project="msc", config=config)
 
     wandb.define_metric("epoch_nr")
     wandb.define_metric("train_accuracy_step_top1")
@@ -91,10 +90,18 @@ def main_func(config):
 
     vit = ViTForImageClassification.from_pretrained(f"WinKawaks/vit-{config['vit_base_size']}-patch16-224")
 
+    switch_top_k = config["switch_top_k"]
+    if config["pretrain_experts_epochs"] and config["switch"]:
+        config["switch_top_k"] = 1
     model, model_config = get_model(config["model"], num_labels, VIT_CONFIG, config)
 
     if config["switch"]:
         model = model_to_switch(config["model"], model, config, model_config)
+
+    if config["pretrain_experts_epochs"] and config["switch"]:
+        model = set_experts_param(model, config["switch_layers"], "route_tokens_to_labels", True)
+        experts_classes = get_experts_classes(config["n_experts"])
+        model = set_experts_param(model, config["switch_layers"], "experts_classes", experts_classes)
 
     model.to(device)
 
@@ -154,12 +161,16 @@ def main_func(config):
             wandb,
         )
 
-        if epoch % config["val_epochs"] == 0:
+        if epoch % config["val_epochs"] == 0 and epoch > config.get("pretrain_experts_epochs", 0):
             acc = val_epoch(model, validation_loader, device, loss, wandb)
             if acc > max_val_acc:
                 max_val_acc = acc
                 max_val_epoch = epoch
                 save_run(model, optimizer, wandb.run.name, epoch)
+
+        if config["pretrain_experts_epochs"] and epoch == config["pretrain_experts_epochs"] and config["switch"]:
+            model = set_experts_param(model, config["switch_layers"], "top_k", switch_top_k)
+            model = set_experts_param(model, config["switch_layers"], "route_tokens_to_labels", False)
 
     print(f"Running test for model {wandb.run.name}, Epoch: {max_val_epoch}, Max acc: {max_val_acc}")
     model, _, _ = load_run(model, optimizer, wandb.run.name, max_val_epoch)
@@ -167,4 +178,7 @@ def main_func(config):
 
 
 if __name__ == "__main__":
+    wandb.login(key="25a61b596081a070a75d3cfc16bfad96632650fc")
+    wandb.init(project="msc", config=CONFIG)
+
     main_func(CONFIG)

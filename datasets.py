@@ -3,8 +3,6 @@ from torch.utils.data import Subset
 from pytorchvideo.data.hmdb51 import Hmdb51
 from pytorchvideo.data.ucf101 import Ucf101
 from pytorchvideo.data.clip_sampling import UniformClipSampler
-import os
-import pickle
 from sklearn.model_selection import train_test_split
 import numpy as np
 
@@ -94,9 +92,9 @@ def get_dataset(dataset: str, ds_transform_train, ds_transform_valid, ds_transfo
     else:
         pass
 
-    if dataset == "ucf101":
+    if "ucf101" in dataset:
         num_labels = 101
-    elif dataset == "hmdb51":
+    elif "hmdb51" in dataset:
         num_labels = 51
 
     return dataset_train, dataset_valid, dataset_test, num_labels
