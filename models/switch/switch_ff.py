@@ -122,11 +122,11 @@ class SwitchFeedForward(Module):
             # Select top-k experts
             # top_k_logits shape: [batch_size * seq_len, k]
             # top_k_indices shape: [batch_size * seq_len, k]
-            top_k_logits, top_k_indices = torch.topk(logits, self.top_k, dim=-1)
+            top_k_weights, top_k_indices = torch.topk(raw_weights, self.top_k, dim=-1)
 
             # Apply softmax to top-k logits for weights
             # top_k_weights shape: [batch_size * seq_len, k]
-            top_k_weights = F.softmax(top_k_logits, dim=-1)
+            # top_k_weights = F.softmax(top_k_logits, dim=-1)
 
             # Create a sparse weight matrix for combining outputs
             # full_weights shape: [batch_size * seq_len, num_experts]
