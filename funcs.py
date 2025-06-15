@@ -3,7 +3,7 @@ import torch
 from metrics import accuracy
 from utils import show_img_chw
 from torch.nn.functional import softmax
-from models.switch.utils import collect_loss, clear_memory, set_experts_param
+from models.switch.utils import collect_loss, clear_memory, set_experts_param, set_grad_except_router
 
 
 def train_epoch(
@@ -31,7 +31,27 @@ def train_epoch(
     total_epoch_correct_top5_train = 0
     processed_videos = set()
     pbar = tqdm.tqdm(total=training_loader.dataset.num_videos)
-    for data in training_loader:
+
+    if (
+        config["switch"]
+        and config["router"]
+        and config["pretrain_experts_epochs"]
+        and config["freeze_net_iters"]
+        and epoch == config.get("pretrain_experts_epochs", -100) + 1
+    ):
+        model = set_grad_except_router(model, config["switch_layers"], len(model.timesformer.encoder.layer), False)
+
+    for iter_nr, data in enumerate(training_loader):
+        if (
+            config["switch"]
+            and config["router"]
+            and config["pretrain_experts_epochs"]
+            and config["freeze_net_iters"]
+            and epoch == config.get("pretrain_experts_epochs", -100) + 1
+            and iter_nr == config.get("freeze_net_iters", 0)
+        ):
+            model = set_grad_except_router(model, config["switch_layers"], len(model.timesformer.encoder.layer), True)
+
         images = data["video"]
         labels = data["label"]
 
@@ -42,17 +62,23 @@ def train_epoch(
             images, labels_mixed_up = mixup(images.permute((0, 2, 1, 3, 4)), labels)
             images = images.permute((0, 2, 1, 3, 4))
             labels = labels_mixed_up.argmax(axis=1)
-            if config["switch"] and config["pretrain_experts_epochs"] and config.get("pretrain_experts_epochs") >= epoch:
+            if (
+                config["switch"]
+            ):
                 model = set_experts_param(model, config["switch_layers"], "labels", labels)
+                model = set_experts_param(model, config["switch_layers"], "video_indexes", data["video_index"])
             outputs = model(images).logits
             loss_train_classification = loss(outputs, labels_mixed_up)
         else:
-            if config["switch"] and config["pretrain_experts_epochs"] and config.get("pretrain_experts_epochs") >= epoch:
+            if (
+                config["switch"]
+            ):
                 model = set_experts_param(model, config["switch_layers"], "labels", labels)
+                model = set_experts_param(model, config["switch_layers"], "video_indexes", data["video_index"])
             outputs = model(images).logits
             loss_train_classification = loss(outputs, labels, label_smoothing=label_smoothing)
 
-        if config["switch"] and config.get("pretrain_experts_epochs") < epoch:
+        if config["switch"] and config.get("pretrain_experts_epochs", 0) < epoch:
             load_balancing_loss = collect_loss(model, config["switch_layers"])
             load_balancing_loss = config["load_balance_alpha"] * config["n_experts"] * load_balancing_loss
         else:

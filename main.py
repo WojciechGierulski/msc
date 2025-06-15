@@ -3,11 +3,11 @@ from datasets import get_dataset
 import torch
 import random
 import numpy as np
-from utils import load_run, show_img_chw, save_run, get_experts_classes
+from utils import load_run, show_img_chw, save_run
 from funcs import train_epoch, val_epoch, test
 from models.vivit_custom.utils.scheduler import WarmupCosineSchedule
-from models.switch.utils import set_experts_param
 from transforms import get_transforms
+from models.switch.utils import set_experts_param
 
 from constants import get_classes
 from vit_configs import get_vit_config
@@ -15,6 +15,7 @@ from loaders import get_loaders
 from transformers import ViTForImageClassification
 from pytorchvideo.transforms import MixUp
 from models.models_functions import get_model, init_model, model_to_switch
+from experts_initializers import init_model_routers
 
 
 CONFIG = {
@@ -22,6 +23,8 @@ CONFIG = {
     "label_smoothing": 0.2,
     "epochs": 10,
     "frames": 8,
+    "row_patches": 14,
+    "col_patches": 14,
     "val_epochs": 1,
     "batch_size": 25,
     "weight_decay": 0,
@@ -37,14 +40,16 @@ CONFIG = {
     "subsample": None,
     "switch": True,
     "switch_layers": [0, 1],
-    "n_experts": 10,
+    "n_experts": 3,
     "switch_top_k": 1,
     "load_balance_alpha": 10,
     "model": "timesformer",
     "clip_duration": 2,
     "cut_layers": 6,  # how many last layers to remove or False/None
     "test_run": True,
-    "pretrain_experts_epochs": 2,
+    "pretrain_experts_epochs": 1,
+    "router": "spatial_vertical",
+    "freeze_net_iters": 30
 }
 
 
@@ -99,9 +104,7 @@ def main_func(config):
         model = model_to_switch(config["model"], model, config, model_config)
 
     if config["pretrain_experts_epochs"] and config["switch"]:
-        model = set_experts_param(model, config["switch_layers"], "route_tokens_to_labels", True)
-        experts_classes = get_experts_classes(config["n_experts"])
-        model = set_experts_param(model, config["switch_layers"], "experts_classes", experts_classes)
+        model = init_model_routers(model, config, dataset_train)
 
     model.to(device)
 
@@ -171,7 +174,7 @@ def main_func(config):
 
         if config["pretrain_experts_epochs"] and epoch == config["pretrain_experts_epochs"] and config["switch"]:
             model = set_experts_param(model, config["switch_layers"], "top_k", switch_top_k)
-            model = set_experts_param(model, config["switch_layers"], "route_tokens_to_labels", False)
+            model = set_experts_param(model, config["switch_layers"], "route", False)
 
     print(f"Running test for model {wandb.run.name}, Epoch: {max_val_epoch}, Max acc: {max_val_acc}")
     model, _, _ = load_run(model, optimizer, wandb.run.name, max_val_epoch)
