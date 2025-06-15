@@ -50,7 +50,8 @@ class SwitchFeedForward(Module):
         self.token_routes = None
 
         self.labels = None
-        self.route_tokens_to_labels = False
+        self.video_indexes = None
+        self.route = False
         self.experts_classes = None
 
     def forward(self, x: torch.Tensor):
@@ -64,25 +65,17 @@ class SwitchFeedForward(Module):
             route_prob = self.softmax(self.switch(x))
 
             route_prob_max, routes = torch.max(route_prob, dim=-1)
-            if self.save_token_routes:
-                self.token_routes = routes
 
             if self.activate_only_n_expert is not None:
                 # only for debug when testing
                 routes = torch.zeros((routes.shape))
                 routes[:] = self.activate_only_n_expert
-            if self.route_tokens_to_labels:
-                class_to_expert_idx_map = {}
-                for expert_idx, classes_for_expert in enumerate(self.experts_classes):
-                    for cls_label in classes_for_expert:
-                        class_to_expert_idx_map[cls_label] = expert_idx
-                routes = torch.empty(batch_size * seq_len, device=x.device)
-                for i in range(batch_size):
-                    item_class = self.labels[i]
-                    assigned_expert_idx = class_to_expert_idx_map.get(item_class.item())
-                    start_token_idx = i * seq_len
-                    end_token_idx = (i + 1) * seq_len
-                    routes[start_token_idx:end_token_idx] = assigned_expert_idx
+            if self.route:
+                routes = self.router.route(
+                    batch_size, seq_len, x.device, labels=self.labels, video_indexes=self.video_indexes
+                )
+            if self.save_token_routes:
+                self.token_routes = routes
 
             indexes_list = [torch.eq(routes, i).nonzero(as_tuple=True)[0] for i in range(self.n_experts)]
 
