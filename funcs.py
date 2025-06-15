@@ -4,6 +4,7 @@ from metrics import accuracy
 from utils import show_img_chw
 from torch.nn.functional import softmax
 from models.switch.utils import collect_loss, clear_memory, set_experts_param
+import time
 
 
 def train_epoch(
@@ -19,6 +20,7 @@ def train_epoch(
     config,
     wandb,
 ):
+    return
     optimizer.zero_grad()
     model.train()
     print(f"Current epoch: {epoch}")
@@ -118,6 +120,7 @@ def val_epoch(model, validation_loader, device, loss, wandb):
     with torch.no_grad():
         pbar = tqdm.tqdm(total=validation_loader.dataset.num_videos)
         for data in validation_loader:
+            start = time.perf_counter()
             images = data["video"]
             labels = data["label"]
             images = images.to(device)
@@ -137,6 +140,7 @@ def val_epoch(model, validation_loader, device, loss, wandb):
             [processed_videos.add(el.item()) for el in data["video_index"]]
             pbar.n = len(processed_videos)
             pbar.refresh()
+            print(time.perf_counter() - start)
 
     wandb.log(
         {

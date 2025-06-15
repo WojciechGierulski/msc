@@ -18,7 +18,7 @@ from models.models_functions import get_model, init_model, model_to_switch
 
 
 CONFIG = {
-    "base_learning_rate": 5,
+    "base_learning_rate": 0.0005,
     "label_smoothing": 0.2,
     "epochs": 10,
     "frames": 8,
@@ -27,7 +27,7 @@ CONFIG = {
     "weight_decay": 0,
     "load_run": False,
     "init_vit": True,
-    "vit_base_size": "tiny",
+    "vit_base_size": "small",
     "cosine_schedule": False,
     "augmentations": True,
     "advanced_augmentations": True,
@@ -35,16 +35,16 @@ CONFIG = {
     "mixup_alpha": 0.2,
     "dataset": "ucf101",
     "subsample": None,
-    "switch": True,
-    "switch_layers": [0, 1],
-    "n_experts": 10,
+    "switch": False,
+    "switch_layers": [0,1,2,3,4,5,6,7,8,9,10,11],
+    "n_experts": 3,
     "switch_top_k": 1,
-    "load_balance_alpha": 10,
+    "load_balance_alpha": 0.01,
     "model": "timesformer",
     "clip_duration": 2,
-    "cut_layers": 6,  # how many last layers to remove or False/None
+    "cut_layers": 0,  # how many last layers to remove or False/None
     "test_run": True,
-    "pretrain_experts_epochs": 2,
+    "pretrain_experts_epochs": 0,
 }
 
 
@@ -109,7 +109,7 @@ def main_func(config):
         model = init_model(config["model"], model, vit, model_config.num_hidden_layers, config)
 
     training_loader, validation_loader, test_loader = get_loaders(
-        dataset_train, dataset_valid, dataset_test, SEED, config["batch_size"], n_workers=1
+        dataset_train, dataset_valid, dataset_test, SEED, config["batch_size"], n_workers=12
     )
 
     epochs = config["epochs"]
