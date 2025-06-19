@@ -49,7 +49,8 @@ CONFIG = {
     "test_run": True,
     "pretrain_experts_epochs": 1,
     "router": "spatial_vertical",
-    "freeze_net_iters": 30
+    "freeze_net_iters": 30,
+    "lock_router": False,
 }
 
 
@@ -166,7 +167,7 @@ def main_func(config):
         )
 
         if epoch % config["val_epochs"] == 0 and epoch > config.get("pretrain_experts_epochs", 0):
-            acc = val_epoch(model, validation_loader, device, loss, wandb)
+            acc = val_epoch(model, validation_loader, device, loss, config, wandb)
             if acc > max_val_acc:
                 max_val_acc = acc
                 max_val_epoch = epoch
@@ -178,7 +179,7 @@ def main_func(config):
 
     print(f"Running test for model {wandb.run.name}, Epoch: {max_val_epoch}, Max acc: {max_val_acc}")
     model, _, _ = load_run(model, optimizer, wandb.run.name, max_val_epoch)
-    test(model, test_loader, device, wandb)
+    test(model, test_loader, device, config, wandb)
 
 
 if __name__ == "__main__":
