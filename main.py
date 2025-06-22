@@ -51,6 +51,7 @@ CONFIG = {
     "router": "spatial_vertical",
     "freeze_net_iters": 30,
     "lock_router": False,
+    "init_kinetics": False,
 }
 
 
@@ -80,6 +81,7 @@ def main_func(config):
     wandb.define_metric("train_classification_loss_epoch", step_metric="epoch_nr")
 
     CLASSES_LIST = get_classes(config["dataset"])
+    config["num_classes"] = len(CLASSES_LIST)
 
     VIT_CONFIG = get_vit_config(config["vit_base_size"])
 
@@ -94,7 +96,12 @@ def main_func(config):
         subsample=config["subsample"],
     )
 
-    vit = ViTForImageClassification.from_pretrained(f"WinKawaks/vit-{config['vit_base_size']}-patch16-224")
+    if config["vit_base_size"] in ['tiny', 'small']:
+        vit = ViTForImageClassification.from_pretrained(f"WinKawaks/vit-{config['vit_base_size']}-patch16-224")
+    elif config["vit_base_size"] == 'base':
+        vit = ViTForImageClassification.from_pretrained("google/vit-base-patch16-224")
+    else:
+        raise ValueError(f"Invalid vit base size: {config['vit_base_size']}")
 
     switch_top_k = config["switch_top_k"]
     if config["pretrain_experts_epochs"] and config["switch"]:

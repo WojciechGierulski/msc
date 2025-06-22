@@ -180,7 +180,7 @@ class SpatialRouterHorizontal:
         self.rows_boundaries = [0]
         for i in range(n_experts):
             max_bndr = min(PATCHES_IN_ROW, rows_per_expert * i + rows_per_expert)
-            self.rows_per_expert.append(max_bndr)
+            self.rows_boundaries.append(max_bndr)
         self.saved_routes = {}  # {batch_size: routes}
 
     def route(self, batch_size, seq_len, device, **kwargs):
@@ -215,7 +215,7 @@ class SpatialRouterCentral:
         self.saved_routes = {}  # {batch_size: routes}
 
     def route(self, batch_size, seq_len, device, **kwargs):
-        if batch_size in self.saved_routes[batch_size]:
+        if batch_size in self.saved_routes:
             return self.saved_routes[batch_size].detach().clone()
         routes = torch.empty(batch_size * seq_len, device=device)  # CLS tokens are left as 0 - always to first expert\
         for b in range(batch_size):
