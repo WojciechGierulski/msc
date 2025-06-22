@@ -30,7 +30,7 @@ CONFIG = {
     "weight_decay": 0,
     "load_run": False,
     "init_vit": True,
-    "vit_base_size": "small",
+    "vit_base_size": "tiny",
     "cosine_schedule": False,
     "augmentations": True,
     "advanced_augmentations": True,
@@ -38,18 +38,19 @@ CONFIG = {
     "mixup_alpha": 0.2,
     "dataset": "ucf101",
     "subsample": None,
-    "switch": False,
+    "switch": True,
     "switch_layers": [0,1,2,3,4,5,6,7,8,9,10,11],
-    "n_experts": 3,
-    "switch_top_k": 1,
+    "n_experts": 2,
+    "switch_top_k": 2,
     "load_balance_alpha": 0.01,
     "model": "timesformer",
     "clip_duration": 2,
-    "cut_layers": 0,  # how many last layers to remove or False/None
-    "test_run": True,
+    "cut_layers": False,  # how many last layers to remove or False/None
+    "test_run": False,
     "pretrain_experts_epochs": 1,
-    "router": "spatial_vertical",
-    "freeze_net_iters": 30
+    "router": "spatial_center",
+    "freeze_net_iters": False,
+    "lock_router": False,
 }
 
 
