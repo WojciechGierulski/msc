@@ -62,17 +62,13 @@ def train_epoch(
             images, labels_mixed_up = mixup(images.permute((0, 2, 1, 3, 4)), labels)
             images = images.permute((0, 2, 1, 3, 4))
             labels = labels_mixed_up.argmax(axis=1)
-            if (
-                config["switch"]
-            ):
+            if config["switch"]:
                 model = set_experts_param(model, config["switch_layers"], "labels", labels)
                 model = set_experts_param(model, config["switch_layers"], "video_indexes", data["video_index"])
             outputs = model(images).logits
             loss_train_classification = loss(outputs, labels_mixed_up)
         else:
-            if (
-                config["switch"]
-            ):
+            if config["switch"]:
                 model = set_experts_param(model, config["switch_layers"], "labels", labels)
                 model = set_experts_param(model, config["switch_layers"], "video_indexes", data["video_index"])
             outputs = model(images).logits
@@ -133,7 +129,7 @@ def train_epoch(
     )
 
 
-def val_epoch(model, validation_loader, device, loss, wandb):
+def val_epoch(model, validation_loader, device, loss, config, wandb):
     model.eval()
     total_loss = 0
     total_batches = 0
@@ -148,6 +144,10 @@ def val_epoch(model, validation_loader, device, loss, wandb):
             labels = data["label"]
             images = images.to(device)
             labels = labels.to(device)
+
+            if config["switch"]:
+                model = set_experts_param(model, config["switch_layers"], "labels", None)
+                model = set_experts_param(model, config["switch_layers"], "video_indexes", data["video_index"])
 
             outputs = model(images).logits
 
@@ -174,7 +174,7 @@ def val_epoch(model, validation_loader, device, loss, wandb):
     return (total_correct / total_samples).item()
 
 
-def test(model, test_loader, device, wandb):
+def test(model, test_loader, device, config, wandb):
     model.eval()
     total_correct = 0
     total_correct_top5 = 0
@@ -185,6 +185,11 @@ def test(model, test_loader, device, wandb):
         for data in test_loader:
             images = data["video"]
             labels = data["label"]
+
+            if config["switch"]:
+                model = set_experts_param(model, config["switch_layers"], "labels", None)
+                model = set_experts_param(model, config["switch_layers"], "video_indexes", data["video_index"])
+
             batch, clips_per_vid, frames, ch, w, h = images.shape
             images = images.reshape((batch * clips_per_vid, frames, ch, w, h))
             images = images.to(device)
