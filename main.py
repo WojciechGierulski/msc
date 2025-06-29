@@ -29,8 +29,8 @@ CONFIG = {
     "batch_size": 10,
     "weight_decay": 0,
     "load_run": False,
-    "init_vit": True,
-    "vit_base_size": "tiny",
+    "init_vit": False,
+    "vit_base_size": "base",
     "cosine_schedule": False,
     "augmentations": True,
     "advanced_augmentations": True,
@@ -47,11 +47,11 @@ CONFIG = {
     "clip_duration": 2,
     "cut_layers": False,  # how many last layers to remove or False/None
     "test_run": True,
-    "pretrain_experts_epochs": 10,
-    "router": "spatial_vertical",
+    "pretrain_experts_epochs": 0,
+    "router": None,
     "freeze_net_iters": 0,
-    "lock_router": True,
-    "init_kinetics": False,
+    "lock_router": False,
+    "init_kinetics": True,
 }
 
 
@@ -109,7 +109,8 @@ def main_func(config):
     model, model_config = get_model(config["model"], num_labels, VIT_CONFIG, config)
 
     if config["switch"]:
-        model = model_to_switch(config["model"], model, config, model_config)
+        keep_weights = True if config["init_kinetics"] else False
+        model = model_to_switch(config["model"], model, config, model_config, keep_weights=keep_weights)
 
     if config["pretrain_experts_epochs"] and config["switch"]:
         model = init_model_routers(model, config, dataset_train)

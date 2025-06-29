@@ -1,4 +1,4 @@
-from transformers import TimesformerForVideoClassification, TimesformerConfig, VivitConfig, VivitForVideoClassification
+from transformers import TimesformerForVideoClassification, TimesformerConfig
 from models.switch.switch_ff import SwitchFeedForward
 import torch
 from labml_nn.transformers.feed_forward import FeedForward
@@ -11,10 +11,12 @@ def timesformer_to_switch(
     n_experts,
     config: TimesformerConfig,
     switch_top_k,
+    keep_weights,
 ):
-    # first - replace layers
     for i, l in enumerate(timesformer.timesformer.encoder.layer):
         if i in layers_for_switch:
+            intermediate_state_dict = l.intermediate.dense.state_dict().copy()
+            output_state_dict = l.output.dense.state_dict().copy()
             l.intermediate = SwitchFeedForward(
                 is_scale_prob=False,
                 n_experts=n_experts,
@@ -28,6 +30,10 @@ def timesformer_to_switch(
                 top_k=switch_top_k,
             )
             l.output = torch.nn.Identity()
+            if keep_weights:
+                for expert in l.intermediate.experts:
+                    expert.layer1.load_state_dict(intermediate_state_dict)
+                    expert.layer2.load_state_dict(output_state_dict)
     return timesformer
 
 
@@ -57,7 +63,6 @@ def set_experts_param(model, switch_layers, param, value):
         if i in switch_layers:
             setattr(model.timesformer.encoder.layer[i].intermediate, param, value)
     return model
-
 
 
 def set_grad_except_router(timesformer: TimesformerForVideoClassification, switch_layers, n_layers, val):
