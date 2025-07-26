@@ -22,6 +22,7 @@ def get_token_idx(row, col, PATCHES_IN_ROW, PATCHES_IN_COL, N_FRAMES, frame_nr, 
 class TokensToLabels:
     def __init__(self, N_SPLITS):
         self.experts_classes = self.get_experts_classes(N_SPLITS)
+        print(self.experts_classes)
         pass
 
     def get_experts_classes(self, N_SPLITS):
