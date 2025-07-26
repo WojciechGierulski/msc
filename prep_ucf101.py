@@ -1,5 +1,4 @@
 import os
-import patoolib
 import gdown
 from constants import UCF101_CLASSES
 
