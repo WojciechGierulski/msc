@@ -55,7 +55,7 @@ class TokensToLabels:
         for expert_idx, classes_for_expert in enumerate(self.experts_classes):
             for cls_label in classes_for_expert:
                 class_to_expert_idx_map[cls_label] = expert_idx
-        routes = torch.empty(batch_size * seq_len, device=device)
+        routes = torch.zeros(batch_size * seq_len, device=device)
         for i in range(batch_size):
             item_class = kwargs["labels"][i]
             assigned_expert_idx = class_to_expert_idx_map.get(item_class.item())
@@ -86,7 +86,7 @@ class TokensToSubDatasets:
             videos_for_expert = self.experts_videos[expert_idx]
             for video_idx in videos_for_expert:
                 video_idx_to_expert_idx_map[video_idx] = expert_idx
-        routes = torch.empty(batch_size * seq_len, device=device)
+        routes = torch.zeros(batch_size * seq_len, device=device)
         for i in range(batch_size):
             item_class = kwargs["video_indexes"][i]
             assigned_expert_idx = video_idx_to_expert_idx_map.get(item_class.item())
@@ -113,7 +113,7 @@ class TemporalRouter:
     def route(self, batch_size, seq_len, device, **kwargs):
         if batch_size in self.saved_routes:
             return self.saved_routes[batch_size].detach().clone()
-        routes = torch.empty(batch_size * seq_len, device=device)  # CLS tokens are left as 0 - always to first expert\
+        routes = torch.zeros(batch_size * seq_len, device=device)  # CLS tokens are left as 0 - always to first expert\
         n_matches = 0
         for b in range(batch_size):
             for frame in range(self.N_FRAMES):
@@ -150,7 +150,7 @@ class SpatialRouterVertical:
     def route(self, batch_size, seq_len, device, **kwargs):
         if batch_size in self.saved_routes:
             return self.saved_routes[batch_size].detach().clone()
-        routes = torch.empty(batch_size * seq_len, device=device)  # CLS tokens are left as 0 - always to first expert\
+        routes = torch.zeros(batch_size * seq_len, device=device)  # CLS tokens are left as 0 - always to first expert\
         n_matches = 0
         for b in range(batch_size):
             for frame in range(self.N_FRAMES):
@@ -187,7 +187,7 @@ class SpatialRouterHorizontal:
     def route(self, batch_size, seq_len, device, **kwargs):
         if batch_size in self.saved_routes:
             return self.saved_routes[batch_size].detach().clone()
-        routes = torch.empty(batch_size * seq_len, device=device)  # CLS tokens are left as 0 - always to first expert\
+        routes = torch.zeros(batch_size * seq_len, device=device)  # CLS tokens are left as 0 - always to first expert\
         n_matches = 0
         for b in range(batch_size):
             for frame in range(self.N_FRAMES):
@@ -218,7 +218,7 @@ class SpatialRouterCentral:
     def route(self, batch_size, seq_len, device, **kwargs):
         if batch_size in self.saved_routes:
             return self.saved_routes[batch_size].detach().clone()
-        routes = torch.empty(batch_size * seq_len, device=device)  # CLS tokens are left as 0 - always to first expert\
+        routes = torch.zeros(batch_size * seq_len, device=device)  # CLS tokens are left as 0 - always to first expert\
         for b in range(batch_size):
             for frame in range(self.N_FRAMES):
                 for row in range(self.PATCHES_IN_ROW):
